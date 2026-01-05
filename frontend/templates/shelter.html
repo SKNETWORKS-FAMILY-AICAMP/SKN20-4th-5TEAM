@@ -1,0 +1,95 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가까운 대피소 찾기 챗봇</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Naver Maps API -->
+    <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId={{ naver_map_client_id }}&submodules=panorama,geocoder" defer></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/shelter.css' %}">
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-2 md:p-6">
+
+<div class="w-full max-w-6xl bg-white shadow-2xl rounded-2xl overflow-hidden grid md:grid-cols-2">
+
+    <!-- left : map + panorama -->
+    <div class="flex flex-col bg-gray-200 h-[250px] md:h-[85vh]">
+        <header class="flex-shrink-0 p-4 bg-red-600 text-white flex justify-between items-center shadow-md">
+            <div>
+                <h1 class="text-lg font-bold">🚨 재난 안전 챗봇</h1>
+                <p class="text-[10px] opacity-90">민방위대피시설 정보 기반</p>
+            </div>
+            <div id="llm-status" class="llm-badge llm-off">LLM OFF</div>
+        </header>
+        
+        <!-- 지도 영역 -->
+        <div id="map" class="w-full transition-all duration-300" style="height: 100%;"></div>
+        
+        <!-- 파노라마 영역 -->
+        <div id="pano" class="w-full bg-gray-800 relative transition-all duration-300" style="height: 0%; overflow: hidden;">
+            <div id="pano-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                📷 지도를 클릭하면 파노라마가 표시됩니다
+            </div>
+            <button id="pano-close-btn" onclick="hidePanorama()" 
+                class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-2 rounded-lg shadow-lg z-50 hidden transition-all"
+                title="파노라마 닫기">
+                ✕ 닫기
+            </button>
+        </div>
+    </div>
+
+    <!-- right : chat -->
+    <div class="flex flex-col h-[250px] md:h-[85vh] bg-white">
+        <div id="chat-window" class="flex-1 min-h-0 p-6 space-y-4 overflow-y-auto bg-white">
+            <div class="flex justify-start">
+                <div class="bg-gray-100 text-gray-800 p-4 rounded-2xl max-w-[80%] shadow-sm">
+                    <p class="font-semibold mb-1">🛡️ 대피소 도우미</p>
+                    <p id="initial-message">대피소 데이터를 로드하는 중입니다. 잠시만 기다려 주세요...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- control panel -->
+        <div id="control-panel" class="flex-shrink-0 p-4 bg-gray-50 border-t border-gray-300 flex flex-col gap-3 shadow-md">
+            <div class="flex gap-2">
+                <button id="geo-btn" onclick="handleGeolocation()"
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl disabled-control"
+                    disabled>📍 현위치로 찾기 (GPS)</button>
+                <button id="clear-btn" onclick="clearChatWindow()"
+                    class="bg-gray-600 hover:bg-gray-700 text-white font-bold px-4 py-3 rounded-xl"
+                    title="채팅 기록 지우기">🗑️</button>
+            </div>
+
+            <div class="flex gap-2">
+                <input id="chat-input"
+                    type="text"
+                    placeholder="주소 / 건물명 / '현위치' 입력"
+                    class="flex-grow border border-gray-300 rounded-xl p-3 focus:ring-emerald-500 focus:border-emerald-500"
+                    onkeydown="if(event.key==='Enter') handleChatInput()"
+                    disabled>
+                <button id="send-btn" onclick="handleChatInput()"
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 rounded-xl disabled-control"
+                    disabled>전송</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Django에서 FastAPI URL 전달 -->
+<script>
+    window.FASTAPI_URL = "{{ fastapi_url }}";
+</script>
+
+<!-- Custom JavaScript -->
+<script src="{% static 'js/shelter.js' %}"></script>
+
+</body>
+</html>

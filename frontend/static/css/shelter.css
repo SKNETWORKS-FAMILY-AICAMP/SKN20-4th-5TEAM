@@ -1,0 +1,41 @@
+/* 기본 폰트 및 배경 */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f0f4f8;
+}
+
+/* 채팅창 스크롤바 숨김 */
+#chat-window::-webkit-scrollbar {
+    display: none;
+}
+
+#chat-window {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* 비활성화된 컨트롤 스타일 */
+.disabled-control {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* LLM 상태 배지 공통 스타일 */
+.llm-badge {
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+/* LLM ON 상태 */
+.llm-on {
+    background-color: #10B981;
+    color: #ffffff;
+}
+
+/* LLM OFF 상태 */
+.llm-off {
+    background-color: #6b7280;
+    color: #ffffff;
+}

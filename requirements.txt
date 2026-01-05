@@ -1,0 +1,42 @@
+# FastAPI 백엔드
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+python-dotenv
+
+# Django 프론트엔드
+django
+django-cors-headers
+# HTTP 클라이언트 (Django에서 FastAPI 호출용)
+httpx
+requests
+
+# LangChain 및 AI 관련
+langchain
+langchain-community
+langchain-core
+langchain-openai
+langgraph
+openai
+
+# 벡터 DB
+chromadb
+sentence-transformers
+
+# 데이터 처리
+pandas
+numpy
+
+# 유틸리티
+python-json-logger
+tqdm
+
+# SSL/HTTPS (기존 generate_ssl_cert.py 용)
+cryptography
+
+# 개발 도구
+pytest
+pytest-asyncio
+black
