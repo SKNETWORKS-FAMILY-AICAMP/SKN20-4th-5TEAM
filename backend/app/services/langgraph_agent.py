@@ -21,7 +21,13 @@ from langchain_community.retrievers import BM25Retriever
 from langgraph.graph import StateGraph, END, START
 from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import MemorySaver
+from pathlib import Path
+from dotenv import load_dotenv
 
+# .env 파일 로드 (프로젝트 루트 기준)
+project_root = Path(__file__).parent.parent.parent
+env_path = project_root / '.env'
+load_dotenv(dotenv_path=env_path)
 
 class EnsembleRetriever:
     """간단한 앙상블 리트리버 구현"""
