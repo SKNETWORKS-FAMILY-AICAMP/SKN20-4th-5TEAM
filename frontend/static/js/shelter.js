@@ -9,13 +9,48 @@ const API_BASE_URL = window.FASTAPI_URL || 'http://127.0.0.1:8001'; // 2026-01-0
 let USE_LLM = false;
 let API_AVAILABLE = false;
 
-// 지도 관련 변수
-let map = null;
+// 지도 및 마커 전역 변수
+let map, panorama;
 let userMarker = null;
-let shelterMarkers = [];
-let openInfoWindows = [];
+let markers = [];
+let infoWindows = [];
+let currentPath = null; // 2026-01-06: 현재 지도에 그려진 경로(Polyline)
+let routeMarkers = [];  // 2026-01-06: 길찾기 출발/도착 지점 마커 관리
 let currentUserPosition = null;
-let panorama = null;
+
+/**
+ * [2026-01-06 추가] 슬라이딩 패널 제어 (열기/닫기)
+ */
+function toggleNavDrawer() {
+    const drawer = document.getElementById('nav-drawer');
+    if (!drawer) return;
+
+    const isHidden = drawer.classList.contains('-translate-x-full');
+    if (isHidden) {
+        openNavDrawer();
+    } else {
+        closeNavDrawer();
+    }
+}
+
+function openNavDrawer() {
+    const drawer = document.getElementById('nav-drawer');
+    const toggleBtn = document.getElementById('nav-toggle-btn');
+    if (drawer) drawer.classList.remove('-translate-x-full');
+    // 패널 열릴 때 토글 버튼에 '열림' 상태 표시 가능 (선택적)
+}
+
+function closeNavDrawer() {
+    const drawer = document.getElementById('nav-drawer');
+    if (drawer) drawer.classList.add('-translate-x-full');
+}
+
+/**
+ * [2026-01-06 제거] 기존 팝업 닫기 함수를 슬라이딩 패널 시나리오에 응용
+ */
+function hideNavigationPanel() {
+    closeNavDrawer();
+}
 
 // DOM 요소
 const chatWindow = document.getElementById('chat-window');
@@ -23,6 +58,11 @@ const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
 const geoBtn = document.getElementById('geo-btn');
 const initialMessageEl = document.getElementById('initial-message');
+
+// [2026-01-06 수정] 슬라이딩 패널 연동
+const navSummary = document.getElementById('nav-summary');
+const navList = document.getElementById('nav-list');
+const navToggleBtn = document.getElementById('nav-toggle-btn');
 
 // 상수
 const EARTH_RADIUS = 6371;
@@ -178,8 +218,8 @@ function addMessage(sender, text, isResult = false) {
  * 모든 정보창 닫기
  */
 function closeAllInfoWindows() {
-    openInfoWindows.forEach(window => window.close());
-    openInfoWindows = [];
+    infoWindows.forEach(window => window.close());
+    infoWindows = [];
 }
 
 
@@ -404,7 +444,7 @@ function createUserMarker(userPosition, userLat, userLon) {
     // naver.maps.Event.addListener(userMarker, "click", () => {
     //     closeAllInfoWindows();
     //     userInfoWindow.open(map, userMarker);
-    //     openInfoWindows.push(userInfoWindow);
+    //     infoWindows.push(userInfoWindow);
 
     //     if (panorama) {
     //         showPanorama();
@@ -420,8 +460,8 @@ function createUserMarker(userPosition, userLat, userLon) {
 function resetMapToCurrentLocation() {
     if (!map || !currentUserPosition) return;
 
-    shelterMarkers.forEach(marker => marker.setMap(null));
-    shelterMarkers = [];
+    markers.forEach(marker => marker.setMap(null));
+    markers = [];
     closeAllInfoWindows();
 
     map.setCenter(currentUserPosition.position);
@@ -463,8 +503,8 @@ function showMapWithMultipleShelters(centerLat, centerLon, shelters, locationNam
 
     closeAllInfoWindows();
     // if (userMarker) userMarker.setMap(null); // 사용자 마커는 CustomOverlay이므로 null로 설정하지 않음
-    shelterMarkers.forEach(marker => marker.setMap(null));
-    shelterMarkers = [];
+    markers.forEach(marker => marker.setMap(null));
+    markers = [];
 
     // 검색 위치 마커 (기존 사용자 마커를 재활용하거나 새로 생성)
     // 2026-01-06: Naver Maps -> Kakao Maps (CustomOverlay로 구현)
@@ -537,7 +577,7 @@ function showMapWithMultipleShelters(centerLat, centerLon, shelters, locationNam
         // naver.maps.Event.addListener(marker, "click", () => {
         //     closeAllInfoWindows();
         //     infoWindow.open(map, marker);
-        //     openInfoWindows.push(infoWindow);
+        //     infoWindows.push(infoWindow);
 
         //     if (panorama) {
         //         showPanorama();
@@ -548,7 +588,7 @@ function showMapWithMultipleShelters(centerLat, centerLon, shelters, locationNam
         kakao.maps.event.addListener(marker, 'click', function () {
             closeAllInfoWindows();
             infoWindow.open(map, marker);
-            openInfoWindows.push(infoWindow);
+            infoWindows.push(infoWindow);
 
             if (panorama) {
                 const roadviewClient = new kakao.maps.RoadviewClient();
@@ -561,7 +601,7 @@ function showMapWithMultipleShelters(centerLat, centerLon, shelters, locationNam
             }
         });
 
-        shelterMarkers.push(marker);
+        markers.push(marker);
     });
 
     // map.fitBounds(bounds, { padding: 60 });
@@ -685,8 +725,130 @@ async function handleChatInput() {
 /**
  * 현위치 기반 대피소 결과 표시
  */
+/**
+ * 인앱 길찾기 경로 그리기
+ * [2026-01-06 추가] 외부 앱 연동 대신 현재 지도 위에 Polyline으로 대피소까지의 이동 경로를 시각화함
+ */
+async function drawRoute(originLat, originLon, destLat, destLon) {
+    if (!API_AVAILABLE) {
+        console.warn("API 서버에 연결되지 않아 경로를 가져올 수 없습니다.");
+        return;
+    }
+
+    // 기존 경로 및 마커 제거
+    if (currentPath) {
+        currentPath.setMap(null);
+    }
+    routeMarkers.forEach(marker => marker.setMap(null));
+    routeMarkers = [];
+
+    // [2026-01-06 수정] 탭 초기화 (팝업 대신 탭 영역 사용)
+    const navSummaryEl = document.getElementById('nav-summary');
+    const navListEl = document.getElementById('nav-list');
+    if (navSummaryEl) navSummaryEl.innerHTML = '<p class="text-gray-500 italic">경로 데이터를 불러오는 중...</p>';
+    if (navListEl) navListEl.innerHTML = '<div class="text-center py-20"><p class="text-gray-400">잠시만 기다려 주세요...</p></div>';
+
+    try {
+        // 카카오 모빌리티 API는 lon,lat 순서를 사용함
+        const origin = `${originLon},${originLat}`;
+        const destination = `${destLon},${destLat}`;
+
+        const response = await fetch(`${window.FASTAPI_URL}/api/directions?origin=${origin}&destination=${destination}`);
+        const data = await response.json();
+
+        if (!data.routes || data.routes.length === 0) {
+            console.log("경로를 찾을 수 없습니다.");
+            return;
+        }
+
+        const route = data.routes[0];
+        const linePath = [];
+        data.routes[0].sections.forEach(section => {
+            section.roads.forEach(road => {
+                const vertexes = road.vertexes;
+                for (let i = 0; i < vertexes.length; i += 2) {
+                    linePath.push(new kakao.maps.LatLng(vertexes[i + 1], vertexes[i]));
+                }
+            });
+        });
+
+        // 폴리라인 생성
+        currentPath = new kakao.maps.Polyline({
+            path: linePath,
+            strokeWeight: 6,
+            strokeColor: '#3B82F6', // Blue-500
+            strokeOpacity: 0.8,
+            strokeStyle: 'solid'
+        });
+
+        currentPath.setMap(map);
+
+        // [2026-01-06 추가] 출발/도착 마커 표시
+        const startMarker = new kakao.maps.CustomOverlay({
+            position: linePath[0],
+            content: '<div style="background:#10B981;color:white;padding:5px 12px;border-radius:15px;font-weight:bold;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:1001;">S</div>',
+            yAnchor: 1.2,
+            zIndex: 1001
+        });
+        const endMarker = new kakao.maps.CustomOverlay({
+            position: linePath[linePath.length - 1],
+            content: '<div style="background:#EF4444;color:white;padding:5px 12px;border-radius:15px;font-weight:bold;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:1001;">E</div>',
+            yAnchor: 1.2,
+            zIndex: 1001
+        });
+
+        startMarker.setMap(map);
+        endMarker.setMap(map);
+        routeMarkers.push(startMarker, endMarker);
+
+        // [2026-01-06 수정] 슬라이딩 패널 업데이트
+        if (navSummary && navList) {
+            const summary = route.summary;
+            const distanceKm = (summary.distance / 1000).toFixed(1);
+            const durationMin = Math.ceil(summary.duration / 60);
+
+            navSummary.innerHTML = `
+                <div class="flex-1 border-r border-emerald-200">거리: <b class="text-emerald-700">${distanceKm}km</b></div>
+                <div class="flex-1">소요시간: <b class="text-emerald-700">${durationMin}분</b></div>
+            `;
+
+            let listHtml = "";
+            route.sections[0].guides.forEach((guide, index) => {
+                if (guide.name || guide.guidance) {
+                    listHtml += `
+                        <div class="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-emerald-200 transition-colors shadow-sm">
+                            <span class="flex-shrink-0 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs mt-0.5 shadow-sm">${index + 1}</span>
+                            <div class="flex-1">
+                                <div class="text-gray-800 font-bold leading-tight mb-1 text-[13px]">${guide.name || guide.guidance}</div>
+                                ${guide.distance > 0 ? `<div class="text-blue-500 font-semibold text-[10px]">${guide.distance}m 이동</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            navList.innerHTML = listHtml;
+
+            // 토글 버튼 표시 및 서랍 열기
+            if (navToggleBtn) navToggleBtn.classList.remove('hidden');
+            openNavDrawer();
+        }
+
+        // 경로가 모두 보이도록 지도 범위 조정
+        const bounds = new kakao.maps.LatLngBounds();
+        linePath.forEach(point => bounds.extend(point));
+        map.setBounds(bounds);
+
+        console.log("🛣️ 경로 및 내비 상세 안내 완료 (2026-01-06)");
+
+    } catch (error) {
+        console.error("경로 안내 자동 실행 오류:", error);
+    }
+}
+
 function displayShelterResultsCurrent(locationName, coords, shelters) {
     const nearest = shelters[0];
+    const userLat = coords[0];
+    const userLon = coords[1];
 
     let shelterList = "";
     shelters.forEach((shelter, index) => {
@@ -699,27 +861,66 @@ function displayShelterResultsCurrent(locationName, coords, shelters) {
 
     addMessage("bot",
         `
-        <p class="text-xl font-bold">${nearest.name}</p>
-        <p>${nearest.address}</p>
-        <p class="mt-2">📍 거리: <b>${nearest.distance.toFixed(2)}km</b></p>
-        <p class="mt-2">수용인원: <b>${nearest.capacity.toLocaleString()}명</b></p>
+        <div class="mb-2">
+            <p class="text-xl font-bold text-emerald-600">${nearest.name}</p>
+            <p class="text-sm text-gray-600">${nearest.address}</p>
+        </div>
+        <div class="space-y-1 mb-3">
+            <p>📍 거리: <b>${nearest.distance.toFixed(2)}km</b></p>
+            <p>👥 수용인원: <b>${nearest.capacity.toLocaleString()}명</b></p>
+        </div>
+        
+        <button onclick="drawRoute(${userLat}, ${userLon}, ${nearest.lat}, ${nearest.lon})" 
+           class="w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors mb-3 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+           🏃 지도에서 길찾기 (경로 표시)
+        </button>
+
         <details class="mt-3">
-            <summary>📋 전체 대피소 목록 보기</summary>
-            <div class="mt-2 ml-2 max-h-40 overflow-y-auto">${shelterList}</div>
+            <summary class="cursor-pointer font-semibold text-blue-600">📋 전체 대피소 목록 보기</summary>
+            <div class="mt-2 ml-2 max-h-40 overflow-y-auto border-t pt-2">${shelterList}</div>
         </details>
         `,
         true
     );
 
-    showMapWithMultipleShelters(coords[0], coords[1], shelters, locationName);
+    showMapWithMultipleShelters(userLat, userLon, shelters, locationName);
+
+    // [2026-01-06 추가] 조회 결과에 따라 최단 거리 대피소 경로 자동 안내
+    console.log("🏃 최단 거리 대피소로 자동 경로 탐색 시작 (2026-01-06)");
+    drawRoute(userLat, userLon, nearest.lat, nearest.lon);
+
     setControlsDisabled(false);
 }
 
-/**
- * 장소명 기반 대피소 결과 표시
- */
 function displayShelterResults(locationName, coords, shelters) {
-    showMapWithMultipleShelters(coords[0], coords[1], shelters, locationName);
+    const nearest = shelters[0];
+    const userLat = coords[0];
+    const userLon = coords[1];
+
+    // 2026-01-06: 장소명 검색 시에도 최단 거리 대피소 정보와 길찾기 기능 제공
+    addMessage("bot",
+        `
+        <div class="mb-2">
+            <p class="text-lg font-bold text-emerald-600">📍 ${locationName} 근처 대피소</p>
+            <p class="text-sm">가장 가까운 곳: <b>${nearest.name}</b></p>
+        </div>
+        <div class="mb-3 text-sm">
+            가까운 대피소 <b>${shelters.length}곳</b>을 찾았습니다. 지도를 확인해 주세요.
+        </div>
+        <button onclick="drawRoute(${userLat}, ${userLon}, ${nearest.lat}, ${nearest.lon})" 
+           class="w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+           🏃 지도에서 길찾기 (경로 표시)
+        </button>
+        `,
+        true
+    );
+
+    showMapWithMultipleShelters(userLat, userLon, shelters, locationName);
+
+    // [2026-01-06 추가] 조회 결과에 따라 가장 가까운 대피소까지 경로를 자동으로 그려줌
+    console.log("🏃 최단 거리 대피소로 자동 보행 경로 안내 시작 (2026-01-06)");
+    drawRoute(userLat, userLon, nearest.lat, nearest.lon);
+
     setControlsDisabled(false);
 }
 

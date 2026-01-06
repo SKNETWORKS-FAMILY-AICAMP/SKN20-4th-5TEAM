@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import os
+import requests
 from dotenv import load_dotenv
 
 # 프로젝트 루트 경로 설정
@@ -418,6 +419,40 @@ async def chatbot_endpoint(request: ChatbotRequest):
             status_code=500, 
             detail=f"챗봇 처리 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+# -----------------------------------------------------------------------------
+# 길찾기 API (2026-01-06 추가: 인앱 경로 표시를 위한 카카오 모빌리티 프록시)
+# -----------------------------------------------------------------------------
+
+@app.get("/api/directions")
+async def get_kakao_directions(origin: str, destination: str):
+    """
+    [2026-01-06 추가] 카카오 모빌리티 API를 호출하여 길찾기 경로 좌표 데이터(Polyline용)를 반환
+    origin, destination 형식: "lon,lat" (예: "127.1,37.3")
+    """
+    kakao_rest_key = os.getenv("KAKAO_REST_API_KEY")
+    if not kakao_rest_key:
+        raise HTTPException(status_code=500, detail="KAKAO_REST_API_KEY가 설정되지 않았습니다.")
+
+    url = "https://apis-navi.kakaomobility.com/v1/directions"
+    headers = {
+        "Authorization": f"KakaoAK {kakao_rest_key}",
+        "Content-Type": "application/json"
+    }
+    params = {
+        "origin": origin,
+        "destination": destination,
+        "priority": "RECOMMEND"
+    }
+
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"[ERROR] 카카오 길찾기 API 호출 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"길찾기 정보를 가져오는 중 오류가 발생했습니다: {str(e)}")
 
 
 # -----------------------------------------------------------------------------

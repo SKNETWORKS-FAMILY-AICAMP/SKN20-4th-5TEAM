@@ -35,7 +35,39 @@
             </header>
 
             <!-- 지도 영역 -->
-            <div id="map" class="w-full transition-all duration-300" style="height: 100%;"></div>
+            <div class="relative flex-1 min-h-0 overflow-hidden">
+                <div id="map" class="w-full h-full transition-all duration-300"></div>
+
+                <!-- [2026-01-06 추가] 슬라이딩 패널 토글 버튼 (지도 위에 고정) -->
+                <button id="nav-toggle-btn" onclick="toggleNavDrawer()"
+                    class="absolute top-4 left-4 z-[110] bg-white border border-gray-200 p-3 rounded-full shadow-lg hover:bg-gray-50 transition-all hidden"
+                    title="길찾기 상세 안내 보기">
+                    🛣️
+                </button>
+
+                <!-- [2026-01-06 추가] 슬라이딩 패널 (Drawer) -->
+                <div id="nav-drawer"
+                    class="absolute top-0 left-0 z-[100] h-full w-72 bg-white/95 backdrop-blur-md shadow-2xl border-r border-gray-200 transform -translate-x-full transition-transform duration-300 flex flex-col">
+
+                    <div
+                        class="p-4 border-b border-gray-200 bg-emerald-600 text-white flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-white">🚶 길찾기 상세</h3>
+                        <button onclick="toggleNavDrawer()"
+                            class="text-white hover:text-gray-200 text-2xl leading-none px-2">&times;</button>
+                    </div>
+
+                    <div id="nav-summary"
+                        class="p-4 bg-emerald-50 border-b border-gray-100 text-sm font-bold text-center text-emerald-800 flex justify-around">
+                        <p>경로 데이터를 불러오는 중...</p>
+                    </div>
+
+                    <div id="nav-list" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+                        <div class="text-center text-gray-400 py-20 text-sm">
+                            <p>🏃 대피소 검색 시 자동으로 안내가 시작됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- 파노라마(로드뷰) 영역 (2026-01-06: 구조 개선) -->
             <div id="pano-container" class="w-full bg-gray-800 relative transition-all duration-300"
