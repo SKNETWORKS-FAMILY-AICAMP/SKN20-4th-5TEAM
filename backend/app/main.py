@@ -161,10 +161,11 @@ langgraph_app = None
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
+    # allow_origins=[
+    #     "http://localhost:8000",
+    #     "http://127.0.0.1:8000",
+    # ],
+    allow_origins=["*"],  # 2026-01-06: 외부 IP 접근 허용을 위해 모든 오리진 허용으로 변경
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

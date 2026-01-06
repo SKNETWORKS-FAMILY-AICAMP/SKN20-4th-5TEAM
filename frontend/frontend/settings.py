@@ -21,7 +21,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-default-key')
 DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ["*"]  # 2026-01-06: 외부 IP 접근 허용을 위해 모든 호스트 허용으로 변경
+
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = "django-insecure-p*si5967&x84u^83ssxi9c#t#cba4y@413qe+k$$wpv5#d78i#"
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+
+# ALLOWED_HOSTS = [] # 2026-01-06 주석 처리
+
 
 # Application definition
 
@@ -124,7 +137,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 FASTAPI_BASE_URL = f"http://{os.getenv('FASTAPI_HOST', 'localhost')}:{os.getenv('FASTAPI_PORT', '8001')}" # 설명: FastAPI 백엔드 서버 URL
 
 # 네이버 지도 API Client ID
-NAVER_MAP_CLIENT_ID = os.getenv('NAVER_MAP_CLIENT_ID', '')
+# NAVER_MAP_CLIENT_ID = os.getenv('NAVER_MAP_CLIENT_ID', '') # 2026-01-06: 카카오 지도로 전환을 위해 주석 처리
+
+# Kakao JS API Key (2026-01-06 추가)
+KAKAO_MAP_API_KEY = os.getenv('KAKAO_JS_API_KEY', os.getenv('KAKAO_REST_API_KEY', ''))
 
 # Kakao REST API Key
 KAKAO_REST_API_KEY = os.getenv('KAKAO_REST_API_KEY', '')

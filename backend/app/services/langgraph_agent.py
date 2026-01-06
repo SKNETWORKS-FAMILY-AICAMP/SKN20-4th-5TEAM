@@ -235,6 +235,7 @@ def create_langgraph_app(vectorstore):
             rewritten = query_rewrite_chain.invoke({"original_query": query})
             print(f"[search_shelter_by_location] 재정의: {query} → {rewritten}")
 
+            # 2026-01-06: 네이버 대신 카카오 API 사용하도록 확정 및 기존 코드 주석 보전
             # 카카오 API로 좌표 검색
             kakao_api_key = os.getenv("KAKAO_REST_API_KEY")
             if not kakao_api_key:
@@ -247,25 +248,33 @@ def create_langgraph_app(vectorstore):
             url = "https://dapi.kakao.com/v2/local/search/keyword.json"
             params = {"query": rewritten}
 
-            response = requests.get(url, headers=headers, params=params)
-            data = response.json()
+            try:
+                response = requests.get(url, headers=headers, params=params)
+                data = response.json()
 
-            if not data.get("documents"):
+                if not data.get("documents"):
+                    return {
+                        "text": f"'{query}' 위치를 찾을 수 없습니다.",
+                        "structured_data": None,
+                    }
+
+                place = data["documents"][0]
+                user_lat = float(place["y"])
+                user_lon = float(place["x"])
+                place_name = place["place_name"]
+                
+                print(f"[카카오 API] 장소 확인: {place_name} ({user_lat}, {user_lon})")
+
+            except Exception as e:
+                print(f"[카카오 API 오류] {e}")
                 return {
-                    "text": f"'{query}' 위치를 찾을 수 없습니다.",
+                    "text": f"카카오 API 호출 중 오류가 발생했습니다: {str(e)}",
                     "structured_data": None,
                 }
 
-            place = data["documents"][0]
-            user_lat = float(place["y"])
-            user_lon = float(place["x"])
-            place_name = place["place_name"]
-
-            print(f"장소확인 {place_name}, {user_lat}, {user_lon}")
-
-            print(
-                f"[search_shelter_by_location] 좌표: {place_name} ({user_lat}, {user_lon})"
-            )
+            # (참고) 네이버 지역 검색 API는 현재 사용하지 않음 (2026-01-06 주석 처리)
+            # client_id = os.getenv("NAVER_SEARCH_CLIENT_ID")
+            # client_secret = os.getenv("NAVER_SECRET_KEY")
 
             # Haversine 거리 계산
             def haversine(lat1, lon1, lat2, lon2):

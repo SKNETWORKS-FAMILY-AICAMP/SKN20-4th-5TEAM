@@ -3,7 +3,8 @@
  * ═══════════════════════════════════════════════════════════════════ */
 
 // API 주소 (Django에서 주입)
-const API_BASE_URL = window.FASTAPI_URL || 'http://127.0.0.1:8443';
+// const API_BASE_URL = window.FASTAPI_URL || 'http://127.0.0.1:8443'; // 기존 설정
+const API_BASE_URL = window.FASTAPI_URL || 'http://127.0.0.1:8001'; // 2026-01-06: 기본 포트를 8001로 수정
 
 let USE_LLM = false;
 let API_AVAILABLE = false;
@@ -35,7 +36,8 @@ function safeLatLng(lat, lon) {
     const a = Number(lat);
     const b = Number(lon);
     if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
-    return new naver.maps.LatLng(a, b);
+    // return new naver.maps.LatLng(a, b); // 2026-01-06 주석 처리
+    return new kakao.maps.LatLng(a, b);
 }
 
 /**
@@ -49,10 +51,10 @@ const toRad = deg => deg * Math.PI / 180;
 function haversine(lat1, lon1, lat2, lon2) {
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
-    const a = Math.sin(dLat / 2) ** 2 + 
-              Math.sin(dLon / 2) ** 2 * 
-              Math.cos(toRad(lat1)) * 
-              Math.cos(toRad(lat2));
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.sin(dLon / 2) ** 2 *
+        Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2));
     return EARTH_RADIUS * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -66,35 +68,38 @@ function haversine(lat1, lon1, lat2, lon2) {
  */
 function showPanorama() {
     const mapDiv = document.getElementById('map');
-    const panoDiv = document.getElementById('pano');
+    const panoContainer = document.getElementById('pano-container'); // 2026-01-06: 부모 컨테이너 참조
     const placeholder = document.getElementById('pano-placeholder');
     const closeBtn = document.getElementById('pano-close-btn');
-    
-    if (mapDiv && panoDiv) {
+
+    if (mapDiv && panoContainer) {
         mapDiv.style.height = '50%';
-        panoDiv.style.height = '50%';
+        panoContainer.style.height = '50%'; // 부모 높이 조절
         if (placeholder) placeholder.style.display = 'none';
         if (closeBtn) closeBtn.classList.remove('hidden');
-        console.log('📷 파노라마 표시');
+        console.log('📷 로드뷰 표시');
     }
 }
 
 /**
- * 파노라마 숨김 (지도 100%로 복귀)
+ * 파노라마(로드뷰) 숨김
  */
 function hidePanorama() {
     const mapDiv = document.getElementById('map');
-    const panoDiv = document.getElementById('pano');
+    const panoContainer = document.getElementById('pano-container'); // 2026-01-06: 부모 컨테이너 참조
     const placeholder = document.getElementById('pano-placeholder');
     const closeBtn = document.getElementById('pano-close-btn');
-    
-    if (mapDiv && panoDiv) {
+
+    if (mapDiv && panoContainer) {
         mapDiv.style.height = '100%';
-        panoDiv.style.height = '0%';
-        if (panorama) panorama.setVisible(false);
+        panoContainer.style.height = '0%'; // 부모 높이 조절
+
+        // 2026-01-06: 카카오 로드뷰는 setVisible을 지원하지 않으므로 주석 처리
+        // if (panorama) panorama.setVisible(false); 
+
         if (placeholder) placeholder.style.display = 'flex';
         if (closeBtn) closeBtn.classList.add('hidden');
-        console.log('🗺️ 파노라마 숨김');
+        console.log('🗺️ 로드뷰 숨김');
     }
 }
 
@@ -232,49 +237,83 @@ async function searchSheltersByCoordinates(lat, lon) {
 
 
 /* ═══════════════════════════════════════════════════════════════════
- * 지도 관련 함수
+ * 지도 관련 함수 (2026-01-06: 카카오 지도로 전면 교체)
  * ═══════════════════════════════════════════════════════════════════ */
 
 /**
  * 지도 초기화
  */
 function initializeMap() {
-    if (typeof naver === 'undefined') {
-        console.error('Naver Maps API가 로드되지 않았습니다.');
+    // 2026-01-06: Naver Maps -> Kakao Maps
+    // if (typeof naver === 'undefined') {
+    //     console.error('Naver Maps API가 로드되지 않았습니다.');
+    //     return;
+    // }
+    if (typeof kakao === 'undefined') {
+        console.error('Kakao Maps API가 로드되지 않았습니다.');
         return;
     }
 
-    const defaultCenter = new naver.maps.LatLng(37.5665, 126.9780);
-    
-    map = new naver.maps.Map("map", {
+    const mapContainer = document.getElementById('map');
+    // const defaultCenter = new naver.maps.LatLng(37.5665, 126.9780);
+    const defaultCenter = new kakao.maps.LatLng(37.5665, 126.9780);
+
+    // map = new naver.maps.Map("map", {
+    //     center: defaultCenter,
+    //     zoom: 12,
+    //     minZoom: 8,
+    //     maxZoom: 18
+    // });
+    const mapOption = {
         center: defaultCenter,
-        zoom: 12,
-        minZoom: 8,
-        maxZoom: 18
-    });
+        level: 5 // 카카오는 zoom 대신 level 사용 (숫자가 클수록 멀어짐)
+    };
+
+    map = new kakao.maps.Map(mapContainer, mapOption);
 
     // 파노라마 초기화
     try {
-        panorama = new naver.maps.Panorama("pano", {
-            position: defaultCenter,
-            pov: { pan: 0, tilt: 0, fov: 100 },
-            visible: false
-        });
-        console.log('파노라마 초기화 완료');
+        // panorama = new naver.maps.Panorama("pano", {
+        //     position: defaultCenter,
+        //     pov: { pan: 0, tilt: 0, fov: 100 },
+        //     visible: false
+        // });
+        const roadviewContainer = document.getElementById('pano');
+        panorama = new kakao.maps.Roadview(roadviewContainer);
+        console.log('로드뷰 초기화 완료');
     } catch (error) {
-        console.warn('파노라마 초기화 실패:', error);
+        console.warn('로드뷰 초기화 실패:', error);
     }
 
     // 지도 클릭 이벤트
-    naver.maps.Event.addListener(map, "click", function(e) {
+    // naver.maps.Event.addListener(map, "click", function (e) {
+    //     closeAllInfoWindows();
+
+    //     if (panorama) {
+    //         const clickedPos = e.coord;
+    //         showPanorama();
+    //         panorama.setPosition(clickedPos);
+    //         panorama.setVisible(true);
+    //         console.log('파노라마 위치 업데이트:', clickedPos.toString());
+    //     }
+    // });
+    kakao.maps.event.addListener(map, "click", function (mouseEvent) {
         closeAllInfoWindows();
-        
+
         if (panorama) {
-            const clickedPos = e.coord;
-            showPanorama();
-            panorama.setPosition(clickedPos);
-            panorama.setVisible(true);
-            console.log('파노라마 위치 업데이트:', clickedPos.toString());
+            const clickedPos = mouseEvent.latLng;
+            const roadviewClient = new kakao.maps.RoadviewClient();
+
+            roadviewClient.getNearestPanoId(clickedPos, 50, function (panoId) {
+                if (panoId) {
+                    showPanorama();
+                    panorama.setPanoId(panoId, clickedPos);
+                    console.log('로드뷰 위치 업데이트:', clickedPos.toString());
+                } else {
+                    console.log('주변에 가용한 로드뷰가 없습니다.');
+                    hidePanorama();
+                }
+            });
         }
     });
 
@@ -295,16 +334,18 @@ function getCurrentPosition() {
         (position) => {
             const userLat = position.coords.latitude;
             const userLon = position.coords.longitude;
-            const userPosition = new naver.maps.LatLng(userLat, userLon);
+            // const userPosition = new naver.maps.LatLng(userLat, userLon);
+            const userPosition = new kakao.maps.LatLng(userLat, userLon);
 
-            currentUserPosition = { 
-                lat: userLat, 
-                lon: userLon, 
-                position: userPosition 
+            currentUserPosition = {
+                lat: userLat,
+                lon: userLon,
+                position: userPosition
             };
 
             map.setCenter(userPosition);
-            map.setZoom(14);
+            // map.setZoom(14);
+            map.setLevel(4);
 
             createUserMarker(userPosition, userLat, userLon);
             console.log('현위치 표시 완료:', userLat, userLon);
@@ -324,38 +365,53 @@ function getCurrentPosition() {
  * 사용자 위치 마커 생성
  */
 function createUserMarker(userPosition, userLat, userLon) {
-    userMarker = new naver.maps.Marker({
-        map: map,
+    // 2026-01-06: Naver Maps -> Kakao Maps (CustomOverlay로 구현)
+    // userMarker = new naver.maps.Marker({
+    //     map: map,
+    //     position: userPosition,
+    //     icon: {
+    //         content: `<div style="background:#4299E1;color:white;padding:6px 10px;border-radius:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📍 현재 위치</div>`,
+    //         anchor: new naver.maps.Point(50, 60)
+    //     }
+    // });
+    if (userMarker) userMarker.setMap(null);
+
+    const content = `
+        <div style="background:#4299E1;color:white;padding:6px 10px;border-radius:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3); font-size:12px;">
+            📍 현재 위치
+        </div>`;
+
+    userMarker = new kakao.maps.CustomOverlay({
         position: userPosition,
-        icon: {
-            content: `<div style="background:#4299E1;color:white;padding:6px 10px;border-radius:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📍 현재 위치</div>`,
-            anchor: new naver.maps.Point(50, 60)
-        }
+        content: content,
+        yAnchor: 1.5
     });
 
-    const userInfoWindow = new naver.maps.InfoWindow({
-        content: `
-            <div style="padding:15px;min-width:200px;">
-                <div style="font-weight:bold;color:#1f2937;margin-bottom:8px;">📍 현재 위치</div>
-                <div style="color:#6b7280;font-size:13px;">
-                    위도: ${userLat.toFixed(6)}<br>
-                    경도: ${userLon.toFixed(6)}
-                </div>
-            </div>
-        `
-    });
+    userMarker.setMap(map);
 
-    naver.maps.Event.addListener(userMarker, "click", () => {
-        closeAllInfoWindows();
-        userInfoWindow.open(map, userMarker);
-        openInfoWindows.push(userInfoWindow);
-        
-        if (panorama) {
-            showPanorama();
-            panorama.setPosition(userPosition);
-            panorama.setVisible(true);
-        }
-    });
+    // const userInfoWindow = new naver.maps.InfoWindow({
+    //     content: `
+    //         <div style="padding:15px;min-width:200px;">
+    //             <div style="font-weight:bold;color:#1f2937;margin-bottom:8px;">📍 현재 위치</div>
+    //             <div style="color:#6b7280;font-size:13px;">
+    //                 위도: ${userLat.toFixed(6)}<br>
+    //                 경도: ${userLon.toFixed(6)}
+    //             </div>
+    //         </div>
+    //     `
+    // });
+
+    // naver.maps.Event.addListener(userMarker, "click", () => {
+    //     closeAllInfoWindows();
+    //     userInfoWindow.open(map, userMarker);
+    //     openInfoWindows.push(userInfoWindow);
+
+    //     if (panorama) {
+    //         showPanorama();
+    //         panorama.setPosition(userPosition);
+    //         panorama.setVisible(true);
+    //     }
+    // });
 }
 
 /**
@@ -363,14 +419,15 @@ function createUserMarker(userPosition, userLat, userLon) {
  */
 function resetMapToCurrentLocation() {
     if (!map || !currentUserPosition) return;
-    
+
     shelterMarkers.forEach(marker => marker.setMap(null));
     shelterMarkers = [];
     closeAllInfoWindows();
-    
+
     map.setCenter(currentUserPosition.position);
-    map.setZoom(14);
-    
+    // map.setZoom(14);
+    map.setLevel(4);
+
     if (!userMarker || !userMarker.getMap()) {
         createUserMarker(
             currentUserPosition.position,
@@ -378,7 +435,7 @@ function resetMapToCurrentLocation() {
             currentUserPosition.lon
         );
     }
-    
+
     console.log('지도를 현위치로 리셋:', currentUserPosition.lat, currentUserPosition.lon);
 }
 
@@ -386,77 +443,129 @@ function resetMapToCurrentLocation() {
  * 여러 대피소를 지도에 표시
  */
 function showMapWithMultipleShelters(centerLat, centerLon, shelters, locationName) {
-    if (typeof naver === 'undefined') return;
+    // 2026-01-06: Naver Maps -> Kakao Maps
+    // if (typeof naver === 'undefined') return;
+    if (typeof kakao === 'undefined') return;
 
-    const center = new naver.maps.LatLng(centerLat, centerLon);
+    // const center = new naver.maps.LatLng(centerLat, centerLon);
+    const center = new kakao.maps.LatLng(centerLat, centerLon);
 
-    if (!map) {
-        map = new naver.maps.Map("map", { center, zoom: 14 });
-        naver.maps.Event.addListener(map, "click", closeAllInfoWindows);
-    } else {
-        map.setCenter(center);
-        map.setZoom(14);
-    }
+    // if (!map) {
+    //     map = new naver.maps.Map("map", { center, zoom: 14 });
+    //     naver.maps.Event.addListener(map, "click", closeAllInfoWindows);
+    // } else {
+    //     map.setCenter(center);
+    //     map.setZoom(14);
+    // }
+    map.setCenter(center);
+    map.setLevel(5);
+
 
     closeAllInfoWindows();
-    if (userMarker) userMarker.setMap(null);
+    // if (userMarker) userMarker.setMap(null); // 사용자 마커는 CustomOverlay이므로 null로 설정하지 않음
     shelterMarkers.forEach(marker => marker.setMap(null));
     shelterMarkers = [];
 
-    // 검색 위치 마커
-    userMarker = new naver.maps.Marker({
-        map,
+    // 검색 위치 마커 (기존 사용자 마커를 재활용하거나 새로 생성)
+    // 2026-01-06: Naver Maps -> Kakao Maps (CustomOverlay로 구현)
+    // userMarker = new naver.maps.Marker({
+    //     map,
+    //     position: center,
+    //     icon: {
+    //         content: `<div style="background:#4299E1;color:white;padding:6px 10px;border-radius:12px;font-weight:bold;">📍 ${locationName}</div>`,
+    //         anchor: new naver.maps.Point(50, 60)
+    //     }
+    // });
+    if (userMarker) userMarker.setMap(null); // 기존 사용자 마커 숨김
+    const searchLocationContent = `
+        <div style="background:#4299E1;color:white;padding:6px 10px;border-radius:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3); font-size:12px;">
+            📍 ${locationName}
+        </div>`;
+    userMarker = new kakao.maps.CustomOverlay({
         position: center,
-        icon: {
-            content: `<div style="background:#4299E1;color:white;padding:6px 10px;border-radius:12px;font-weight:bold;">📍 ${locationName}</div>`,
-            anchor: new naver.maps.Point(50, 60)
-        }
+        content: searchLocationContent,
+        yAnchor: 1.5
     });
+    userMarker.setMap(map);
 
-    const bounds = new naver.maps.LatLngBounds(center, center);
+
+    // const bounds = new naver.maps.LatLngBounds(center, center);
+    const bounds = new kakao.maps.LatLngBounds();
+    bounds.extend(center);
 
     // 대피소 마커 생성
     shelters.forEach((shelter, index) => {
-        const position = safeLatLng(shelter.lat, shelter.lon);
-        if (!position) return;
+        // const position = safeLatLng(shelter.lat, shelter.lon);
+        // if (!position) return;
+        const position = new kakao.maps.LatLng(shelter.lat, shelter.lon);
         bounds.extend(position);
 
-        const marker = new naver.maps.Marker({
-            map,
-            position: position,
-            icon: index === 0 ? {
-                url: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
-            } : undefined
+        // const marker = new naver.maps.Marker({
+        //     map,
+        //     position: position,
+        //     icon: index === 0 ? {
+        //         url: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+        //     } : undefined
+        // });
+        const marker = new kakao.maps.Marker({
+            map: map,
+            position: position
         });
 
-        const infoWindow = new naver.maps.InfoWindow({
+        // const infoWindow = new naver.maps.InfoWindow({
+        //     content: `
+        //         <div style="padding:10px;">
+        //             ${index === 0 ? "<b>🏆 가장 가까운 대피소</b><br>" : ""}
+        //             <b>${shelter.name}</b><br>
+        //             ${shelter.address}<br>
+        //             거리: ${shelter.distance.toFixed(2)}km<br>
+        //             수용인원: ${shelter.capacity.toLocaleString()}명
+        //         </div>
+        //     `
+        // });
+        const infoWindow = new kakao.maps.InfoWindow({
             content: `
-                <div style="padding:10px;">
-                    ${index === 0 ? "<b>🏆 가장 가까운 대피소</b><br>" : ""}
+                <div style="padding:10px; font-size:12px; width:200px;">
                     <b>${shelter.name}</b><br>
-                    ${shelter.address}<br>
-                    거리: ${shelter.distance.toFixed(2)}km<br>
-                    수용인원: ${shelter.capacity.toLocaleString()}명
+                    ${shelter.address.substring(0, 20)}...<br>
+                    거리: ${shelter.distance.toFixed(2)}km
                 </div>
-            `
+            `,
+            removable: true
         });
 
-        naver.maps.Event.addListener(marker, "click", () => {
+        // naver.maps.Event.addListener(marker, "click", () => {
+        //     closeAllInfoWindows();
+        //     infoWindow.open(map, marker);
+        //     openInfoWindows.push(infoWindow);
+
+        //     if (panorama) {
+        //         showPanorama();
+        //         panorama.setPosition(position);
+        //         panorama.setVisible(true);
+        //     }
+        // });
+        kakao.maps.event.addListener(marker, 'click', function () {
             closeAllInfoWindows();
             infoWindow.open(map, marker);
             openInfoWindows.push(infoWindow);
-            
+
             if (panorama) {
-                showPanorama();
-                panorama.setPosition(position);
-                panorama.setVisible(true);
+                const roadviewClient = new kakao.maps.RoadviewClient();
+                roadviewClient.getNearestPanoId(position, 50, function (panoId) {
+                    if (panoId) {
+                        showPanorama();
+                        panorama.setPanoId(panoId, position);
+                    }
+                });
             }
         });
 
         shelterMarkers.push(marker);
     });
 
-    map.fitBounds(bounds, { padding: 60 });
+    // map.fitBounds(bounds, { padding: 60 });
+    map.setBounds(bounds);
 }
 
 
@@ -478,7 +587,7 @@ function handleGeolocation() {
         setControlsDisabled(false);
         return;
     }
-    
+
     hidePanorama();
     navigator.geolocation.getCurrentPosition(
         onSuccessGeolocation,
@@ -545,9 +654,9 @@ async function handleChatInput() {
 
     addMessage("bot", "🤖 입력 내용을 분석 중...");
     const result = await extractLocationWithLLM(query);
-    
+
     console.log("result ---", result);
-    
+
     if (!result || !result.success) {
         addMessage("bot", result?.message || "❌ 지명을 인식할 수 없습니다.");
         setControlsDisabled(false);
