@@ -113,11 +113,19 @@ function showPanorama() {
     const closeBtn = document.getElementById('pano-close-btn');
 
     if (mapDiv && panoContainer) {
-        mapDiv.style.height = '50%';
-        panoContainer.style.height = '50%'; // 부모 높이 조절
+        // [2026-01-07 최종수정] 지도의 height를 직접 건드리지 않고, 하단 컨테이너 크기만 조절합니다.
+        // mapDiv.style.height = '50%'; (삭제)
+        panoContainer.style.height = '50%';
+
         if (placeholder) placeholder.style.display = 'none';
         if (closeBtn) closeBtn.classList.remove('hidden');
-        console.log('📷 로드뷰 표시');
+
+        // [2026-01-07 수정] 애니메이션(0.3s)이 완료된 후 레이아웃 재계산
+        setTimeout(() => {
+            if (map) map.relayout();
+            if (panorama) panorama.relayout();
+            console.log('📷 로드뷰 표시 (relayout 완료)');
+        }, 350);
     }
 }
 
@@ -131,15 +139,21 @@ function hidePanorama() {
     const closeBtn = document.getElementById('pano-close-btn');
 
     if (mapDiv && panoContainer) {
-        mapDiv.style.height = '100%';
-        panoContainer.style.height = '0%'; // 부모 높이 조절
+        // [2026-01-07 최종수정] 지도의 height를 100%로 다시 돌릴 필요 없이 컨테이너만 0으로 만듭니다.
+        // mapDiv.style.height = '100%'; (삭제)
+        panoContainer.style.height = '0%';
 
         // 2026-01-06: 카카오 로드뷰는 setVisible을 지원하지 않으므로 주석 처리
         // if (panorama) panorama.setVisible(false); 
 
         if (placeholder) placeholder.style.display = 'flex';
         if (closeBtn) closeBtn.classList.add('hidden');
-        console.log('🗺️ 로드뷰 숨김');
+
+        // [2026-01-07 수정] 애니메이션 완료 후 지도 레이아웃 재계산
+        setTimeout(() => {
+            if (map) map.relayout();
+            console.log('🗺️ 로드뷰 숨김 (relayout 완료)');
+        }, 350);
     }
 }
 
