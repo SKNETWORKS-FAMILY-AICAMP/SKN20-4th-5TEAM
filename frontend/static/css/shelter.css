@@ -22,10 +22,10 @@ body {
 
 /* LLM 상태 배지 공통 스타일 */
 .llm-badge {
-    padding: 4px 10px;
-    border-radius: 14px;
-    font-size: 11px;
-    font-weight: bold;
+    padding: 8px 18px;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: 800;
 }
 
 /* LLM ON 상태 */
@@ -44,14 +44,17 @@ body {
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
     background: #10B981;
     border-radius: 10px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #059669;
 }

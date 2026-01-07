@@ -37,12 +37,18 @@ function openNavDrawer() {
     const drawer = document.getElementById('nav-drawer');
     const toggleBtn = document.getElementById('nav-toggle-btn');
     if (drawer) drawer.classList.remove('-translate-x-full');
-    // 패널 열릴 때 토글 버튼에 '열림' 상태 표시 가능 (선택적)
+    if (toggleBtn) toggleBtn.classList.add('hidden'); // 패널이 열리면 버튼 숨김
 }
 
 function closeNavDrawer() {
     const drawer = document.getElementById('nav-drawer');
+    const toggleBtn = document.getElementById('nav-toggle-btn');
     if (drawer) drawer.classList.add('-translate-x-full');
+
+    // 경로 데이터가 있는 경우에만 버튼을 다시 보여줌
+    if (toggleBtn && navSummary && navSummary.innerHTML.includes('km')) {
+        toggleBtn.classList.remove('hidden');
+    }
 }
 
 /**
@@ -188,13 +194,13 @@ function setControlsDisabled(disabled) {
 function updateLlmBadge() {
     const badge = document.getElementById('llm-status');
     if (API_AVAILABLE && USE_LLM) {
-        badge.className = "llm-badge llm-on";
+        badge.className = "px-6 py-2 rounded-full text-xl font-black shadow-lg bg-emerald-500 text-white animate-pulse";
         badge.textContent = "🤖 LLM ON";
     } else if (API_AVAILABLE) {
-        badge.className = "llm-badge llm-off";
+        badge.className = "px-6 py-2 rounded-full text-xl font-black shadow-lg bg-orange-500 text-white";
         badge.textContent = "📍 규칙 기반";
     } else {
-        badge.className = "llm-badge llm-off";
+        badge.className = "px-6 py-2 rounded-full text-xl font-black shadow-lg bg-gray-500 text-white";
         badge.textContent = "📂 로컬 모드";
     }
 }
@@ -220,10 +226,10 @@ function addMessage(sender, text, isResult = false) {
         avatar.innerHTML = `<img src="/static/images/bot2.png" class="w-full h-full object-cover" alt="Bot Avatar">`;
 
         if (isResult) {
-            box.style.background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
-            box.style.color = "#FFFFFF";
-            box.className = "p-5 rounded-3xl rounded-tl-none max-w-[85%] shadow-xl border border-emerald-400";
-            box.innerHTML = `<p class="font-black text-xl mb-2 flex items-center gap-2">📍 대피소 검색 결과 <span class="animate-bounce">✨</span></p>${text}`;
+            box.style.background = "#FFFFFF";
+            box.style.color = "#111827"; // gray-900
+            box.className = "p-6 rounded-3xl rounded-tl-none max-w-[85%] shadow-xl border-l-[6px] border-emerald-500 border-t border-r border-b border-gray-100 transition-all";
+            box.innerHTML = `<p class="font-black text-2xl mb-3 text-emerald-700 flex items-center gap-2 border-b border-emerald-50 pb-2">📍 대피소 검색 결과 <span class="animate-bounce">✨</span></p><div class="leading-relaxed">${text}</div>`;
         } else {
             box.className = "bg-white text-gray-800 p-4 rounded-3xl rounded-tl-none max-w-[80%] shadow-lg border border-gray-100";
             box.innerHTML = `<p class="font-bold text-emerald-600 mb-1 flex items-center gap-2">🛡️ 대피소 도우미</p><div>${text}</div>`;
@@ -440,7 +446,7 @@ function createUserMarker(userPosition, userLat, userLon) {
     if (userMarker) userMarker.setMap(null);
 
     const content = `
-        <div style="background:#4299E1;color:white;padding:6px 10px;border-radius:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3); font-size:12px;">
+        <div style="background:#3182CE;color:white;padding:10px 18px;border-radius:20px;font-weight:bold;box-shadow:0 4px 10px rgba(0,0,0,0.4); font-size:18px; border: 2px solid white;">
             📍 현재 위치
         </div>`;
 
@@ -541,7 +547,7 @@ function showMapWithMultipleShelters(centerLat, centerLon, shelters, locationNam
     // });
     if (userMarker) userMarker.setMap(null); // 기존 사용자 마커 숨김
     const searchLocationContent = `
-        <div style="background:#4299E1;color:white;padding:6px 10px;border-radius:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3); font-size:12px;">
+        <div style="background:#3182CE;color:white;padding:10px 18px;border-radius:20px;font-weight:bold;box-shadow:0 4px 10px rgba(0,0,0,0.4); font-size:18px; border: 2px solid white;">
             📍 ${locationName}
         </div>`;
     userMarker = new kakao.maps.CustomOverlay({
@@ -701,6 +707,7 @@ async function handleChatInput() {
     if (!query) return;
 
     hidePanorama();
+    closeNavDrawer(); // 새 검색 시작 시 패널 닫기 (버튼 표시 여부는 로직에 따름)
     addMessage("user", query);
     setControlsDisabled(true);
 
