@@ -14,6 +14,7 @@ import uvicorn
 import os
 import requests
 from dotenv import load_dotenv
+import time  # <-- 추가
 
 # 프로젝트 루트 경로 설정
 project_root = Path(__file__).parent.parent.parent
@@ -214,9 +215,10 @@ async def get_api_status():
 @app.post("/api/location/extract")
 async def extract_location(request: LocationExtractRequest = Body(...)):
     """
-    LangGraph Agent 기반 통합 검색
-    기존 main.py의 로직 그대로 사용
+    LangGraph Agent 기반 통합 검색 (시간 측정 포함)
     """
+    request_start = time.time()
+    
     if langgraph_app is None:
         return LocationExtractResponse(
             success=False, 
@@ -230,19 +232,33 @@ async def extract_location(request: LocationExtractRequest = Body(...)):
             message="입력 문장이 비어 있습니다."
         )
 
-    print(f"[API] 사용자 쿼리: '{query}'")
+    print(f"\n{'='*60}")
+    print(f"[API 요청 시작] '{query}'")
+    print(f"{'='*60}")
 
     try:
         session_id = f"session_{hash(query) % 100000}"
         config = {"configurable": {"thread_id": session_id}}
 
+        # LangGraph 실행 시간 측정
+        langgraph_start = time.time()
         result = langgraph_app.invoke(
             {"messages": [HumanMessage(content=query)]}, 
             config=config
         )
+        langgraph_time = time.time() - langgraph_start
 
         final_message = result["messages"][-1]
         structured_data = result.get("structured_data", None)
+
+        # 총 처리 시간
+        total_time = time.time() - request_start
+
+        print(f"\n{'='*60}")
+        print(f"⏱️ [성능 측정 결과]")
+        print(f"  - LangGraph 실행 시간: {langgraph_time:.3f}초")
+        print(f"  - API 총 처리 시간: {total_time:.3f}초")
+        print(f"{'='*60}\n")
 
         if structured_data:
             print(f"[INFO] 구조화된 응답 반환 (좌표 포함)")

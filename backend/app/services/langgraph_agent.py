@@ -10,6 +10,7 @@ import json
 import re
 from math import radians, sin, cos, sqrt, atan2
 from typing import TypedDict, Annotated, Optional
+import time
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -230,13 +231,17 @@ def create_langgraph_app(vectorstore):
         Returns:
             dict: {"text": str, "structured_data": dict} 형식
         """
+        start_time = time.time()
+        
         try:
             # 쿼리 재정의
+            rewrite_start = time.time()
             rewritten = query_rewrite_chain.invoke({"original_query": query})
-            print(f"[search_shelter_by_location] 재정의: {query} → {rewritten}")
-
-            # 2026-01-06: 네이버 대신 카카오 API 사용하도록 확정 및 기존 코드 주석 보전
-            # 카카오 API로 좌표 검색
+            rewrite_time = time.time() - rewrite_start
+            print(f"⏱️ [쿼리 재정의 시간] {rewrite_time:.3f}초")
+            
+            # 카카오 API 호출
+            api_start = time.time()
             kakao_api_key = os.getenv("KAKAO_REST_API_KEY")
             if not kakao_api_key:
                 return {
@@ -271,12 +276,17 @@ def create_langgraph_app(vectorstore):
                     "text": f"카카오 API 호출 중 오류가 발생했습니다: {str(e)}",
                     "structured_data": None,
                 }
-
-            # (참고) 네이버 지역 검색 API는 현재 사용하지 않음 (2026-01-06 주석 처리)
-            # client_id = os.getenv("NAVER_SEARCH_CLIENT_ID")
-            # client_secret = os.getenv("NAVER_SECRET_KEY")
-
-            # Haversine 거리 계산
+            api_time = time.time() - api_start
+            print(f"⏱️ [카카오 API 호출 시간] {api_time:.3f}초")
+            
+            # VectorDB 검색
+            vector_start = time.time()
+            all_data = vectorstore.get(where={"type": "shelter"})
+            vector_time = time.time() - vector_start
+            print(f"⏱️ [ChromaDB 검색 시간] {vector_time:.3f}초")
+            
+            # 거리 계산
+            calc_start = time.time()
             def haversine(lat1, lon1, lat2, lon2):
                 R = 6371
                 dlat = radians(lat2 - lat1)
@@ -288,8 +298,6 @@ def create_langgraph_app(vectorstore):
                 c = 2 * atan2(sqrt(a), sqrt(1 - a))
                 return R * c
 
-            # 모든 대피소 가져오기
-            all_data = vectorstore.get(where={"type": "shelter"})
             shelters = []
 
             for metadata in all_data["metadatas"]:
@@ -342,6 +350,9 @@ def create_langgraph_app(vectorstore):
                 "total_count": len(all_data["metadatas"]),
             }
 
+            total_time = time.time() - start_time
+            print(f"⏱️ [search_shelter_by_location 총 시간] {total_time:.3f}초")
+            
             return {"text": result_text.strip(), "structured_data": structured_data}
 
         except Exception as e:
@@ -1315,35 +1326,38 @@ def create_langgraph_app(vectorstore):
 
     # 10. 노드 함수들
     def intent_classifier_node(state: AgentState):
-        """의도 분류 노드"""
+        """의도 분류 노드 (시간 측정)"""
+        start_time = time.time()
         messages = state["messages"]
         last_message = messages[-1].content
 
         print(f"\n[의도분류 노드] 입력: {last_message}")
 
         try:
-            # 의도 분류
             intent_result = intent_chain.invoke({"query": last_message})
             intent_data = json.loads(intent_result)
             intent = intent_data["intent"]
 
-            print(
-                f"[의도분류 노드] 결과: {intent} (신뢰도: {intent_data.get('confidence', 0)})"
-            )
+            elapsed = time.time() - start_time
+            print(f"⏱️ [의도분류 시간] {elapsed:.3f}초")
+            print(f"[의도분류 노드] 결과: {intent} (신뢰도: {intent_data.get('confidence', 0)})")
 
             return {"intent": intent}
 
         except Exception as e:
+            elapsed = time.time() - start_time
+            print(f"⏱️ [의도분류 시간 (실패)] {elapsed:.3f}초")
             print(f"[의도분류 노드] 오류: {e}, 기본값 사용")
             return {"intent": "general_chat"}
 
+
     def query_rewrite_node(state: AgentState):
-        """질문 재정의 노드"""
+        """질문 재정의 노드 (시간 측정)"""
+        start_time = time.time()
         messages = state["messages"]
         last_message = messages[-1].content
         intent = state.get("intent", "")
 
-        # 일반 대화나 일반 지식은 재정의 불필요
         if intent in ["general_chat", "general_knowledge"]:
             return {"rewritten_query": last_message}
 
@@ -1351,33 +1365,41 @@ def create_langgraph_app(vectorstore):
 
         try:
             rewritten = query_rewrite_chain.invoke({"original_query": last_message})
+            elapsed = time.time() - start_time
+            print(f"⏱️ [질문재정의 시간] {elapsed:.3f}초")
             print(f"[질문재정의 노드] 결과: {rewritten}")
             return {"rewritten_query": rewritten}
         except Exception as e:
+            elapsed = time.time() - start_time
+            print(f"⏱️ [질문재정의 시간 (실패)] {elapsed:.3f}초")
             print(f"[질문재정의 노드] 오류: {e}")
             return {"rewritten_query": last_message}
 
+
     def agent_node(state: AgentState):
-        """에이전트 추론 노드 (도구 선택 및 실행)"""
+        """에이전트 추론 노드 (시간 측정)"""
+        start_time = time.time()
         messages = state["messages"]
         intent = state.get("intent", "")
 
         print(f"\n[에이전트 노드] 의도: {intent}")
 
-        # 시스템 프롬프트 추가
         if not any(isinstance(m, SystemMessage) for m in messages):
             messages = [SystemMessage(content=SYSTEM_PROMPT)] + messages
 
-        # LLM 호출 (도구 선택)
         response = llm_with_tools.invoke(messages)
+        
+        elapsed = time.time() - start_time
+        print(f"⏱️ [LLM 호출 시간] {elapsed:.3f}초")
 
         return {"messages": [response]}
 
+
     def tools_node_with_structured_data(state: AgentState):
-        """도구 실행 노드 (구조화된 데이터 추출 포함)"""
+        """도구 실행 노드 (시간 측정)"""
+        start_time = time.time()
         from langgraph.prebuilt import ToolNode
 
-        # 기본 ToolNode 실행
         tool_node = ToolNode(tools)
         result = tool_node.invoke(state)
 
@@ -1414,6 +1436,9 @@ def create_langgraph_app(vectorstore):
                         print(f"[tools_node] structured_data 추출 완료 (dict): True")
                     message.content = content.get("text", str(content))
 
+        elapsed = time.time() - start_time
+        print(f"⏱️ [도구 실행 시간] {elapsed:.3f}초")
+
         return {"messages": messages, "structured_data": structured_data}
 
     def should_continue(state: AgentState):
@@ -1427,6 +1452,24 @@ def create_langgraph_app(vectorstore):
 
         # 없으면 종료
         return END
+
+    def should_continue_after_tools(state: AgentState):
+        """도구 실행 후 추가 처리 필요 여부 판단 (NEW)"""
+        messages = state["messages"]
+        last_message = messages[-1]
+        
+        # 도구 실행 결과가 있고, structured_data가 있으면 바로 종료
+        if state.get("structured_data") is not None:
+            print("[최적화] structured_data 존재 → 즉시 종료")
+            return END
+        
+        # 도구 실행 결과가 텍스트로만 있어도 종료
+        if hasattr(last_message, "content") and len(str(last_message.content)) > 50:
+            print("[최적화] 충분한 답변 존재 → 즉시 종료")
+            return END
+        
+        # 추가 도구 호출이 필요한 경우만 agent로 복귀
+        return "agent"
 
     # 11. 그래프 구성
     workflow = StateGraph(AgentState)
@@ -1442,7 +1485,7 @@ def create_langgraph_app(vectorstore):
     workflow.add_edge("intent_classifier", "query_rewrite")
     workflow.add_edge("query_rewrite", "agent")
     workflow.add_conditional_edges("agent", should_continue, ["tools", END])
-    workflow.add_edge("tools", "agent")  # 도구 실행 후 다시 에이전트로
+    workflow.add_conditional_edges("tools", should_continue_after_tools, ["agent", END])  # 수정
 
     # 12. 메모리 체크포인트
     memory = MemorySaver()
