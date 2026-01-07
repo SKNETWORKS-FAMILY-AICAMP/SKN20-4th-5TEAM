@@ -438,37 +438,84 @@ async def chatbot_endpoint(request: ChatbotRequest):
 
 
 # -----------------------------------------------------------------------------
-# 길찾기 API (2026-01-06 추가: 인앱 경로 표시를 위한 카카오 모빌리티 프록시)
+# 길찾기 API (2026-01-07 수정: 기존 카카오 대신 T Map 보행자 경로 API 사용)
 # -----------------------------------------------------------------------------
 
 @app.get("/api/directions")
-async def get_kakao_directions(origin: str, destination: str):
+async def get_directions(origin: str, destination: str):
     """
-    [2026-01-06 추가] 카카오 모빌리티 API를 호출하여 길찾기 경로 좌표 데이터(Polyline용)를 반환
-    origin, destination 형식: "lon,lat" (예: "127.1,37.3")
+    [2026-01-07 수정] T Map 보행자 경로 API를 호출하여 경로 데이터를 반환
+    origin, destination 형식: "lon,lat"
     """
-    kakao_rest_key = os.getenv("KAKAO_REST_API_KEY")
-    if not kakao_rest_key:
-        raise HTTPException(status_code=500, detail="KAKAO_REST_API_KEY가 설정되지 않았습니다.")
+    tmap_api_key = os.getenv("TMAP_API_KEY", "").strip()
+    if not tmap_api_key:
+        raise HTTPException(status_code=500, detail="TMAP_API_KEY가 설정되지 않았습니다.")
 
-    url = "https://apis-navi.kakaomobility.com/v1/directions"
+    # T Map 보행자 경로 API URL (쿼리 파라미터로도 appKey 시도)
+    url = f"https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&appKey={tmap_api_key}"
+    
     headers = {
-        "Authorization": f"KakaoAK {kakao_rest_key}",
-        "Content-Type": "application/json"
-    }
-    params = {
-        "origin": origin,
-        "destination": destination,
-        "priority": "RECOMMEND"
+        "appKey": tmap_api_key,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0"
     }
 
     try:
-        response = requests.get(url, headers=headers, params=params)
+        # origin/destination 파싱 (예: "127.1,37.3")
+        oloc = origin.split(',')
+        dloc = destination.split(',')
+        
+        payload = {
+            "startX": float(oloc[0]),
+            "startY": float(oloc[1]),
+            "endX": float(dloc[0]),
+            "endY": float(dloc[1]),
+            "startName": "출발지",
+            "endName": "도착지",
+            "reqCoordType": "WGS84GEO",
+            "resCoordType": "WGS84GEO"
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            print(f"[DEBUG] T Map Response: {response.status_code} - {response.text}")
         response.raise_for_status()
         return response.json()
+        
     except Exception as e:
-        print(f"[ERROR] 카카오 길찾기 API 호출 실패: {e}")
+        print(f"[ERROR] T Map 길찾기 API 호출 실패: {e}")
         raise HTTPException(status_code=500, detail=f"길찾기 정보를 가져오는 중 오류가 발생했습니다: {str(e)}")
+
+# [2026-01-07 주석 처리] 기존 카카오 길찾기 API 로직
+# @app.get("/api/directions")
+# async def get_kakao_directions(origin: str, destination: str):
+#     """
+#     [2026-01-06 추가] 카카오 모빌리티 API를 호출하여 길찾기 경로 좌표 데이터(Polyline용)를 반환
+#     origin, destination 형식: "lon,lat" (예: "127.1,37.3")
+#     """
+#     kakao_rest_key = os.getenv("KAKAO_REST_API_KEY")
+#     if not kakao_rest_key:
+#         raise HTTPException(status_code=500, detail="KAKAO_REST_API_KEY가 설정되지 않았습니다.")
+# 
+#     url = "https://apis-navi.kakaomobility.com/v1/directions"
+#     headers = {
+#         "Authorization": f"KakaoAK {kakao_rest_key}",
+#         "Content-Type": "application/json"
+#     }
+#     params = {
+#         "origin": origin,
+#         "destination": destination,
+#         "priority": "RECOMMEND"
+#     }
+# 
+#     try:
+#         response = requests.get(url, headers=headers, params=params)
+#         response.raise_for_status()
+#         return response.json()
+#     except Exception as e:
+#         print(f"[ERROR] 카카오 길찾기 API 호출 실패: {e}")
+#         raise HTTPException(status_code=500, detail=f"길찾기 정보를 가져오는 중 오류가 발생했습니다: {str(e)}")
 
 
 # -----------------------------------------------------------------------------

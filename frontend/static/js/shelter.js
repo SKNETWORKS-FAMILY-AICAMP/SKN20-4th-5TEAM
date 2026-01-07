@@ -749,7 +749,133 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
     if (navListEl) navListEl.innerHTML = '<div class="text-center py-20"><p class="text-gray-400">잠시만 기다려 주세요...</p></div>';
 
     try {
-        // 카카오 모빌리티 API는 lon,lat 순서를 사용함
+        const origin = `${originLon},${originLat}`;
+        const destination = `${destLon},${destLat}`;
+
+        // [2026-01-07 수정] T Map API 프록시 호출
+        const response = await fetch(`${window.FASTAPI_URL}/api/directions?origin=${origin}&destination=${destination}`);
+        const data = await response.json();
+
+        // [2026-01-07 수정] T Map (GeoJSON) 데이터 처리
+        if (!data.features || data.features.length === 0) {
+            console.log("경로를 찾을 수 없습니다.");
+            if (navSummaryEl) navSummaryEl.innerHTML = '<p class="text-red-500">경로를 찾을 수 없습니다.</p>';
+            return;
+        }
+
+        const linePath = [];
+        let listHtml = "";
+        let totalDistance = 0;
+        let totalTime = 0;
+        let guideIndex = 1;
+
+        // T Map GeoJSON 파싱
+        data.features.forEach((feature) => {
+            const geometry = feature.geometry;
+            const properties = feature.properties;
+
+            if (geometry.type === "LineString") {
+                // 경로 좌표 모으기
+                geometry.coordinates.forEach(coord => {
+                    linePath.push(new kakao.maps.LatLng(coord[1], coord[0]));
+                });
+            } else if (geometry.type === "Point") {
+                // 안내 지점 처리
+                if (properties.description) {
+                    listHtml += `
+                        <div class="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-emerald-200 transition-colors shadow-sm">
+                            <span class="flex-shrink-0 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs mt-0.5 shadow-sm">${guideIndex++}</span>
+                            <div class="flex-1">
+                                <div class="text-gray-800 font-bold leading-tight mb-1 text-[13px]">${properties.description}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 첫 번째 feature(일반적으로 전체 요약 정보 포함)에서 메타데이터 추출
+            if (properties.totalDistance && totalDistance === 0) {
+                totalDistance = properties.totalDistance;
+                totalTime = properties.totalTime;
+            }
+        });
+
+        // 폴리라인 생성
+        currentPath = new kakao.maps.Polyline({
+            path: linePath,
+            strokeWeight: 6,
+            strokeColor: '#3B82F6', // Blue-500
+            strokeOpacity: 0.8,
+            strokeStyle: 'solid'
+        });
+
+        currentPath.setMap(map);
+
+        // 출발/도착 마커 표시
+        const startMarker = new kakao.maps.CustomOverlay({
+            position: linePath[0],
+            content: '<div style="background:#10B981;color:white;padding:5px 12px;border-radius:15px;font-weight:bold;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:1001;">S</div>',
+            yAnchor: 1.2,
+            zIndex: 1001
+        });
+        const endMarker = new kakao.maps.CustomOverlay({
+            position: linePath[linePath.length - 1],
+            content: '<div style="background:#EF4444;color:white;padding:5px 12px;border-radius:15px;font-weight:bold;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:1001;">E</div>',
+            yAnchor: 1.2,
+            zIndex: 1001
+        });
+
+        startMarker.setMap(map);
+        endMarker.setMap(map);
+        routeMarkers.push(startMarker, endMarker);
+
+        // 슬라이딩 패널 업데이트
+        if (navSummary && navList) {
+            const distanceKm = (totalDistance / 1000).toFixed(1);
+            const durationMin = Math.ceil(totalTime / 60);
+
+            navSummary.innerHTML = `
+                <div class="flex-1 border-r border-emerald-200">거리: <b class="text-emerald-700">${distanceKm}km</b></div>
+                <div class="flex-1">소요시간: <b class="text-emerald-700">${durationMin}분</b></div>
+            `;
+            navList.innerHTML = listHtml;
+
+            // 토글 버튼 표시 및 서랍 열기
+            if (navToggleBtn) navToggleBtn.classList.remove('hidden');
+            openNavDrawer();
+        }
+
+        // 경로가 모두 보이도록 지도 범위 조정
+        const bounds = new kakao.maps.LatLngBounds();
+        linePath.forEach(point => bounds.extend(point));
+        map.setBounds(bounds);
+
+        console.log("🛣️ T Map 기반 경로 안내 완료 (2026-01-07)");
+
+    } catch (error) {
+        console.error("경로 안내 자동 실행 오류:", error);
+    }
+}
+
+/* [2026-01-07 주석 처리] 기존 카카오 기반 drawRoute 로직
+async function drawRoute(originLat, originLon, destLat, destLon) {
+    if (!API_AVAILABLE) {
+        console.warn("API 서버에 연결되지 않아 경로를 가져올 수 없습니다.");
+        return;
+    }
+
+    if (currentPath) {
+        currentPath.setMap(null);
+    }
+    routeMarkers.forEach(marker => marker.setMap(null));
+    routeMarkers = [];
+
+    const navSummaryEl = document.getElementById('nav-summary');
+    const navListEl = document.getElementById('nav-list');
+    if (navSummaryEl) navSummaryEl.innerHTML = '<p class="text-gray-500 italic">경로 데이터를 불러오는 중...</p>';
+    if (navListEl) navListEl.innerHTML = '<div class="text-center py-20"><p class="text-gray-400">잠시만 기다려 주세요...</p></div>';
+
+    try {
         const origin = `${originLon},${originLat}`;
         const destination = `${destLon},${destLat}`;
 
@@ -772,18 +898,16 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
             });
         });
 
-        // 폴리라인 생성
         currentPath = new kakao.maps.Polyline({
             path: linePath,
             strokeWeight: 6,
-            strokeColor: '#3B82F6', // Blue-500
+            strokeColor: '#3B82F6', 
             strokeOpacity: 0.8,
             strokeStyle: 'solid'
         });
 
         currentPath.setMap(map);
 
-        // [2026-01-06 추가] 출발/도착 마커 표시
         const startMarker = new kakao.maps.CustomOverlay({
             position: linePath[0],
             content: '<div style="background:#10B981;color:white;padding:5px 12px;border-radius:15px;font-weight:bold;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:1001;">S</div>',
@@ -801,7 +925,6 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
         endMarker.setMap(map);
         routeMarkers.push(startMarker, endMarker);
 
-        // [2026-01-06 수정] 슬라이딩 패널 업데이트
         if (navSummary && navList) {
             const summary = route.summary;
             const distanceKm = (summary.distance / 1000).toFixed(1);
@@ -820,7 +943,7 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
                             <span class="flex-shrink-0 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs mt-0.5 shadow-sm">${index + 1}</span>
                             <div class="flex-1">
                                 <div class="text-gray-800 font-bold leading-tight mb-1 text-[13px]">${guide.name || guide.guidance}</div>
-                                ${guide.distance > 0 ? `<div class="text-blue-500 font-semibold text-[10px]">${guide.distance}m 이동</div>` : ''}
+                                ${guide.distance > 0 ? \`<div class="text-blue-500 font-semibold text-[10px]">\${guide.distance}m 이동</div>\` : ''}
                             </div>
                         </div>
                     `;
@@ -828,22 +951,18 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
             });
             navList.innerHTML = listHtml;
 
-            // 토글 버튼 표시 및 서랍 열기
             if (navToggleBtn) navToggleBtn.classList.remove('hidden');
             openNavDrawer();
         }
 
-        // 경로가 모두 보이도록 지도 범위 조정
         const bounds = new kakao.maps.LatLngBounds();
         linePath.forEach(point => bounds.extend(point));
         map.setBounds(bounds);
-
-        console.log("🛣️ 경로 및 내비 상세 안내 완료 (2026-01-06)");
-
     } catch (error) {
         console.error("경로 안내 자동 실행 오류:", error);
     }
 }
+*/
 
 function displayShelterResultsCurrent(locationName, coords, shelters) {
     const nearest = shelters[0];
