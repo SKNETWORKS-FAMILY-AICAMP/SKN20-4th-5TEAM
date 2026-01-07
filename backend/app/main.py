@@ -63,6 +63,7 @@ class LocationExtractResponse(BaseModel):
     shelters: List[Dict] = []
     total_count: int = 0
     message: str = ""
+    intent: Optional[str] = None # 2026-01-07 추가: 사용자 의도 (shelter_search, shelter_info 등)
 
 
 class ChatbotRequest(BaseModel):
@@ -269,6 +270,7 @@ async def extract_location(request: LocationExtractRequest = Body(...)):
                 shelters=structured_data.get("shelters", []),
                 total_count=structured_data.get("total_count", 0),
                 message=final_message.content,
+                intent=result.get("intent") # 2026-01-07 추가
             )
         else:
             print(f"[INFO] 텍스트 응답 반환")
@@ -279,6 +281,7 @@ async def extract_location(request: LocationExtractRequest = Body(...)):
                 shelters=[],
                 total_count=0,
                 message=final_message.content,
+                intent=result.get("intent") # 2026-01-07 추가
             )
 
     except Exception as e:

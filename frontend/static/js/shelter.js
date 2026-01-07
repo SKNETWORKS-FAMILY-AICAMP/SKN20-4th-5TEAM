@@ -204,26 +204,35 @@ function updateLlmBadge() {
  */
 function addMessage(sender, text, isResult = false) {
     const wrap = document.createElement('div');
+    const avatar = document.createElement('div');
     const box = document.createElement('div');
 
     if (sender === "user") {
-        wrap.className = "flex justify-end";
-        box.className = "bg-red-100 text-gray-900 p-3 rounded-2xl rounded-tr-none max-w-[80%] shadow-sm";
+        wrap.className = "flex justify-end mb-4 px-2 hover:opacity-95 transition-all";
+        box.className = "bg-red-50 text-gray-900 p-4 rounded-3xl rounded-tr-none max-w-[85%] shadow-md border border-red-100";
         box.innerHTML = text;
+        wrap.appendChild(box);
     } else {
-        wrap.className = "flex justify-start";
+        wrap.className = "flex justify-start mb-6 px-2 hover:opacity-95 transition-all group items-start gap-3";
+
+        // 캐릭터 아바타 추가
+        avatar.className = "flex-shrink-0 w-12 h-12 rounded-2xl overflow-hidden shadow-lg bg-white transform group-hover:scale-105 transition-transform duration-300";
+        avatar.innerHTML = `<img src="/static/images/bot2.png" class="w-full h-full object-cover" alt="Bot Avatar">`;
+
         if (isResult) {
-            box.style.backgroundColor = "#22c55e";
+            box.style.background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
             box.style.color = "#FFFFFF";
-            box.className = "p-3 rounded-2xl rounded-tl-none max-w-[90%] shadow-lg";
-            box.innerHTML = `<p class="font-bold text-lg mb-1">📍 대피소 검색 결과</p>${text}`;
+            box.className = "p-5 rounded-3xl rounded-tl-none max-w-[85%] shadow-xl border border-emerald-400";
+            box.innerHTML = `<p class="font-black text-xl mb-2 flex items-center gap-2">📍 대피소 검색 결과 <span class="animate-bounce">✨</span></p>${text}`;
         } else {
-            box.className = "bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-tl-none max-w-[80%] shadow-sm";
-            box.innerHTML = `<p class="font-semibold mb-1">🛡️ 대피소 도우미</p>${text}`;
+            box.className = "bg-white text-gray-800 p-4 rounded-3xl rounded-tl-none max-w-[80%] shadow-lg border border-gray-100";
+            box.innerHTML = `<p class="font-bold text-emerald-600 mb-1 flex items-center gap-2">🛡️ 대피소 도우미</p><div>${text}</div>`;
         }
+
+        wrap.appendChild(avatar);
+        wrap.appendChild(box);
     }
 
-    wrap.appendChild(box);
     chatWindow.appendChild(wrap);
     chatWindow.scrollTop = chatWindow.scrollHeight;
 }
@@ -723,7 +732,7 @@ async function handleChatInput() {
     }
 
     if (result.shelters && result.shelters.length > 0 && result.coordinates) {
-        displayShelterResults(result.location, result.coordinates, result.shelters);
+        displayShelterResults(result.location, result.coordinates, result.shelters, result.intent); // intent 추가 전달
     } else {
         resetMapToCurrentLocation();
     }
@@ -796,11 +805,13 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
             } else if (geometry.type === "Point") {
                 // 안내 지점 처리
                 if (properties.description) {
+                    const segmentDist = properties.distance ? `<div class="text-blue-600 font-bold text-lg mt-2">${properties.distance}m 이동</div>` : "";
                     listHtml += `
-                        <div class="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-emerald-200 transition-colors shadow-sm">
-                            <span class="flex-shrink-0 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs mt-0.5 shadow-sm">${guideIndex++}</span>
-                            <div class="flex-1">
-                                <div class="text-gray-800 font-bold leading-tight mb-1 text-[13px]">${properties.description}</div>
+                        <div class="flex items-start gap-4 p-5 rounded-2xl bg-gray-50 border border-gray-200 hover:border-emerald-300 transition-all shadow-sm">
+                            <span class="flex-shrink-0 w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-lg shadow-md">${guideIndex++}</span>
+                            <div class="flex-1 pt-1">
+                                <div class="text-gray-800 font-bold leading-relaxed text-xl">${properties.description}</div>
+                                ${segmentDist}
                             </div>
                         </div>
                     `;
@@ -825,16 +836,16 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
 
         currentPath.setMap(map);
 
-        // 출발/도착 마커 표시
+        // 출발/도착 마커 표시 - [2026-01-07 크기 대폭 확대]
         const startMarker = new kakao.maps.CustomOverlay({
             position: linePath[0],
-            content: '<div style="background:#10B981;color:white;padding:5px 12px;border-radius:15px;font-weight:bold;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:1001;">S</div>',
+            content: '<div style="background:#10B981;color:white;padding:10px 22px;border-radius:25px;font-weight:900;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white;">S</div>',
             yAnchor: 1.2,
             zIndex: 1001
         });
         const endMarker = new kakao.maps.CustomOverlay({
             position: linePath[linePath.length - 1],
-            content: '<div style="background:#EF4444;color:white;padding:5px 12px;border-radius:15px;font-weight:bold;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:1001;">E</div>',
+            content: '<div style="background:#EF4444;color:white;padding:10px 22px;border-radius:25px;font-weight:900;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white;">E</div>',
             yAnchor: 1.2,
             zIndex: 1001
         });
@@ -849,8 +860,14 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
             const durationMin = Math.ceil(totalTime / 60);
 
             navSummary.innerHTML = `
-                <div class="flex-1 border-r border-emerald-200">거리: <b class="text-emerald-700">${distanceKm}km</b></div>
-                <div class="flex-1">소요시간: <b class="text-emerald-700">${durationMin}분</b></div>
+                <div class="flex-1 border-r border-emerald-100 py-0.5 text-center">
+                    <span class="text-sm text-emerald-600 font-medium block">총 거리</span>
+                    <b class="text-2xl text-emerald-800">${distanceKm}km</b>
+                </div>
+                <div class="flex-1 py-0.5 text-center">
+                    <span class="text-sm text-emerald-600 font-medium block">소요 시간</span>
+                    <b class="text-2xl text-emerald-800">${durationMin}분</b>
+                </div>
             `;
             navList.innerHTML = listHtml;
 
@@ -978,7 +995,7 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
 }
 */
 
-function displayShelterResultsCurrent(locationName, coords, shelters) {
+function displayShelterResultsCurrent(locationName, coords, shelters, intent = null) {
     const nearest = shelters[0];
     const userLat = coords[0];
     const userLon = coords[1];
@@ -992,6 +1009,17 @@ function displayShelterResultsCurrent(locationName, coords, shelters) {
         `;
     });
 
+    // [2026-01-07 수정] 길찾기가 불필요한 의도 목록 확장
+    const NO_DIRECTIONS_INTENTS = ['shelter_info', 'shelter_count', 'shelter_capacity', 'disaster_guideline', 'general_knowledge', 'general_chat'];
+    const hideDirections = NO_DIRECTIONS_INTENTS.includes(intent);
+
+    const directionsBtn = hideDirections ? '' : `
+        <button onclick="drawRoute(${userLat}, ${userLon}, ${nearest.lat}, ${nearest.lon})" 
+           class="w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors mb-3 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+           🏃 지도에서 길찾기 (경로 표시)
+        </button>
+    `;
+
     addMessage("bot",
         `
         <div class="mb-2">
@@ -1003,10 +1031,7 @@ function displayShelterResultsCurrent(locationName, coords, shelters) {
             <p>👥 수용인원: <b>${nearest.capacity.toLocaleString()}명</b></p>
         </div>
         
-        <button onclick="drawRoute(${userLat}, ${userLon}, ${nearest.lat}, ${nearest.lon})" 
-           class="w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors mb-3 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
-           🏃 지도에서 길찾기 (경로 표시)
-        </button>
+        ${directionsBtn}
 
         <details class="mt-3">
             <summary class="cursor-pointer font-semibold text-blue-600">📋 전체 대피소 목록 보기</summary>
@@ -1018,17 +1043,33 @@ function displayShelterResultsCurrent(locationName, coords, shelters) {
 
     showMapWithMultipleShelters(userLat, userLon, shelters, locationName);
 
-    // [2026-01-06 추가] 조회 결과에 따라 최단 거리 대피소 경로 자동 안내
-    console.log("🏃 최단 거리 대피소로 자동 경로 탐색 시작 (2026-01-06)");
-    drawRoute(userLat, userLon, nearest.lat, nearest.lon);
+    // [2026-01-07 수정] shelter_info가 아닐 때만 자동 경로 안내
+    if (!hideDirections) {
+        console.log("🏃 최단 거리 대피소로 자동 경로 탐색 시작 (2026-01-07)");
+        drawRoute(userLat, userLon, nearest.lat, nearest.lon);
+    } else {
+        console.log("ℹ️ 시설 정보 조회 의도이므로 길찾기를 건너뜁니다.");
+        if (typeof closeNavDrawer === 'function') closeNavDrawer(); // 내비 드로워 닫기
+    }
 
     setControlsDisabled(false);
 }
 
-function displayShelterResults(locationName, coords, shelters) {
+function displayShelterResults(locationName, coords, shelters, intent = null) {
     const nearest = shelters[0];
     const userLat = coords[0];
     const userLon = coords[1];
+
+    // [2026-01-07 수정] 길찾기가 불필요한 의도 목록 확장
+    const NO_DIRECTIONS_INTENTS = ['shelter_info', 'shelter_count', 'shelter_capacity', 'disaster_guideline', 'general_knowledge', 'general_chat'];
+    const hideDirections = NO_DIRECTIONS_INTENTS.includes(intent);
+
+    const directionsBtn = hideDirections ? '' : `
+        <button onclick="drawRoute(${userLat}, ${userLon}, ${nearest.lat}, ${nearest.lon})" 
+           class="w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+           🏃 지도에서 길찾기 (경로 표시)
+        </button>
+    `;
 
     // 2026-01-06: 장소명 검색 시에도 최단 거리 대피소 정보와 길찾기 기능 제공
     addMessage("bot",
@@ -1040,19 +1081,21 @@ function displayShelterResults(locationName, coords, shelters) {
         <div class="mb-3 text-sm">
             가까운 대피소 <b>${shelters.length}곳</b>을 찾았습니다. 지도를 확인해 주세요.
         </div>
-        <button onclick="drawRoute(${userLat}, ${userLon}, ${nearest.lat}, ${nearest.lon})" 
-           class="w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
-           🏃 지도에서 길찾기 (경로 표시)
-        </button>
+        ${directionsBtn}
         `,
         true
     );
 
     showMapWithMultipleShelters(userLat, userLon, shelters, locationName);
 
-    // [2026-01-06 추가] 조회 결과에 따라 가장 가까운 대피소까지 경로를 자동으로 그려줌
-    console.log("🏃 최단 거리 대피소로 자동 보행 경로 안내 시작 (2026-01-06)");
-    drawRoute(userLat, userLon, nearest.lat, nearest.lon);
+    // [2026-01-07 수정] shelter_info가 아닐 때만 자동 경로 안내
+    if (!hideDirections) {
+        console.log("🏃 최단 거리 대피소로 자동 보행 경로 안내 시작 (2026-01-07)");
+        drawRoute(userLat, userLon, nearest.lat, nearest.lon);
+    } else {
+        console.log("ℹ️ 시설 정보 조회 의도이므로 길찾기를 건너뜁니다.");
+        if (typeof closeNavDrawer === 'function') closeNavDrawer(); // 내비 드로워 닫기
+    }
 
     setControlsDisabled(false);
 }
