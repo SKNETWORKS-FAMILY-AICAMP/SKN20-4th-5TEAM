@@ -192,21 +192,57 @@ def create_langgraph_app(vectorstore):
                 "system",
                 """당신은 검색 쿼리를 최적화하는 전문가입니다.
 
-사용자의 질문을 BM25 키워드 검색에 최적화된 형태로 재작성하세요.
+사용자의 질문을 **검색 시스템별로 최적화**된 형태로 재작성하세요.
 
-**재작성 규칙**:
-1. 핵심 키워드만 추출 (불필요한 조사, 어미 제거)
-2. 동의어 추가 (예: "대피소" → "대피소 피난처")
-3. 지역명은 다양한 형태로 표현 (예: "서울" → "서울 서울시 서울특별시")
-4. 위치 유형 명확화 (예: "지하" → "지하 지하층")
-5. 최대 10단어 이내로 간결하게
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**예시**:
-- "한라산 근처 대피소는?" → "한라산 제주 대피소 피난처"
-- "서울에 있는 지하 대피소" → "서울 서울시 지하 지하층 대피소"
-- "동대문맨션 대피소" → "동대문맨션 동대문 대피소"
+**1️⃣ 카카오 API용 (위치 검색)**
+- **목적**: 정확한 장소 좌표 찾기
+- **원칙**: 
+  ✅ 특정 위치(역, 건물, 매장): 그대로 유지
+     예) "강남역", "롯데월드", "스타벅스 명동점"
+  
+  ✅ 지역명(시/구/동): 행정기관으로 변환
+     예) "서울" → "서울시청"
+     예) "동작구" → "동작구청"
+     예) "송파" → "송파구청"
+     예) "여의도동" → "여의도동 주민센터"
+  
+  ✅ "대피소", "근처", "주변" 등 제거
+  
+- **예시**:
+  * "강남역 근처 대피소" → "강남역"
+  * "서울 대피소" → "서울시청"
+  * "동작구 주변" → "동작구청"
+  * "송파 지하 대피소" → "송파구청"
 
-**응답**: 재작성된 쿼리만 출력 (설명 없이)""",
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**2️⃣ VectorDB용 (의미 검색)**
+- **목적**: 유사한 문서 찾기 (BM25 + Vector)
+- **원칙**:
+  ✅ 핵심 키워드 + 동의어 추가
+  ✅ 지역명 다양한 표현 (서울 → 서울 서울시 서울특별시)
+  ✅ 위치 유형 명확화 (지하 → 지하 지하층)
+  ✅ 최대 10단어 이내
+  
+- **예시**:
+  * "강남역 근처 대피소" → "강남역 강남 대피소 피난처"
+  * "서울 대피소" → "서울 서울시 서울특별시 대피소"
+  * "동작구 지하" → "동작구 동작 지하 지하층 대피소"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**응답 형식** (JSON):
+{{
+    "kakao": "카카오 API용 쿼리",
+    "vector": "VectorDB용 쿼리",
+    "location_type": "specific" or "region"
+}}
+
+**location_type 판단 기준**:
+- "specific": 역명, 건물명, 매장명 등 구체적 장소
+- "region": 시/구/동 등 행정구역""",
             ),
             ("user", "{original_query}"),
         ]
@@ -222,36 +258,48 @@ def create_langgraph_app(vectorstore):
     def search_shelter_by_location(query: str) -> dict:
         """
         특정 위치의 대피소를 검색합니다.
-        카카오 API로 좌표를 찾고, 가장 가까운 대피소 5곳을 반환합니다.
-        지도 표시용 구조화된 데이터를 포함합니다.
-
-        Args:
-            query: 위치 정보 (지명, 건물명, 주소 등)
-
-        Returns:
-            dict: {"text": str, "structured_data": dict} 형식
+        - 특정 장소(역, 건물): 해당 위치 중심으로 검색
+        - 지역명(시/구): 행정기관(시청/구청) 중심으로 검색
         """
         start_time = time.time()
         
         try:
-            # 쿼리 재정의
-            rewrite_start = time.time()
-            rewritten = query_rewrite_chain.invoke({"original_query": query})
-            rewrite_time = time.time() - rewrite_start
-            print(f"⏱️ [쿼리 재정의 시간] {rewrite_time:.3f}초")
+            # ⭐ 질문 재정의로 location_type 판단
+            vector_query = query_rewrite_chain.invoke({"original_query": query})
             
+            try:
+                import json
+                parsed = json.loads(vector_query)
+                kakao_query = parsed.get("kakao", query)
+                vector_query = parsed.get("vector", query)
+                location_type = parsed.get("location_type", "specific")
+                
+                print(f"[search_shelter_by_location] 위치 유형: {location_type}")
+                print(f"[search_shelter_by_location] 카카오용: '{kakao_query}'")
+                print(f"[search_shelter_by_location] Vector용: '{vector_query}'")
+                
+            except:
+                # JSON 파싱 실패 시 기본값
+                kakao_query = query
+                location_type = "specific"
+                
+                # 기존 정제 로직
+                remove_words = ["근처", "주변", "인근", "대피소", "피난소", "피난처", 
+                              "알려줘", "찾아줘", "어디", "있어", "의", "를", "을"]
+                for word in remove_words:
+                    kakao_query = kakao_query.replace(word, "")
+                
+                kakao_query = " ".join(kakao_query.split()).strip()
+        
             # 카카오 API 호출
             api_start = time.time()
             kakao_api_key = os.getenv("KAKAO_REST_API_KEY")
             if not kakao_api_key:
-                return {
-                    "text": "카카오 API 키가 설정되지 않았습니다.",
-                    "structured_data": None,
-                }
+                return {"text": "카카오 API 키가 설정되지 않았습니다.", "structured_data": None}
 
             headers = {"Authorization": f"KakaoAK {kakao_api_key}"}
             url = "https://dapi.kakao.com/v2/local/search/keyword.json"
-            params = {"query": rewritten}
+            params = {"query": kakao_query}
 
             try:
                 response = requests.get(url, headers=headers, params=params)
@@ -259,7 +307,7 @@ def create_langgraph_app(vectorstore):
 
                 if not data.get("documents"):
                     return {
-                        "text": f"'{query}' 위치를 찾을 수 없습니다.",
+                        "text": f"'{kakao_query}' 위치를 찾을 수 없습니다.",
                         "structured_data": None,
                     }
 
@@ -268,7 +316,8 @@ def create_langgraph_app(vectorstore):
                 user_lon = float(place["x"])
                 place_name = place["place_name"]
                 
-                print(f"[카카오 API] 장소 확인: {place_name} ({user_lat}, {user_lon})")
+                location_desc = f"{place_name} ({location_type})"
+                print(f"[카카오 API] 장소 확인: {location_desc} ({user_lat}, {user_lon})")
 
             except Exception as e:
                 print(f"[카카오 API 오류] {e}")
@@ -276,10 +325,11 @@ def create_langgraph_app(vectorstore):
                     "text": f"카카오 API 호출 중 오류가 발생했습니다: {str(e)}",
                     "structured_data": None,
                 }
+            
             api_time = time.time() - api_start
             print(f"⏱️ [카카오 API 호출 시간] {api_time:.3f}초")
             
-            # VectorDB 검색
+            # VectorDB 검색 (기존 로직)
             vector_start = time.time()
             all_data = vectorstore.get(where={"type": "shelter"})
             vector_time = time.time() - vector_start
@@ -334,7 +384,8 @@ def create_langgraph_app(vectorstore):
                 }
 
             # 텍스트 결과 포맷팅
-            result_text = f"📍 **{place_name}** 근처 대피소 {len(top_5)}곳\n\n"
+            location_text = "지역" if location_type == "region" else "위치"
+            result_text = f"📍 **{place_name}** {location_text} 기준 대피소 {len(top_5)}곳\n\n"
             for i, s in enumerate(top_5, 1):
                 result_text += f"{i}. **{s['name']}**\n"
                 result_text += f"   📍 거리: {s['distance']:.2f}km\n"
@@ -345,7 +396,9 @@ def create_langgraph_app(vectorstore):
             # 구조화된 데이터 (지도 표시용)
             structured_data = {
                 "location": place_name,
-                "coordinates": (user_lat, user_lon),
+                "location_type": location_type,  # NEW
+                "user_coordinates": [user_lat, user_lon],
+                "coordinates": [user_lat, user_lon],
                 "shelters": top_5,
                 "total_count": len(all_data["metadatas"]),
             }
@@ -358,7 +411,6 @@ def create_langgraph_app(vectorstore):
         except Exception as e:
             print(f"[ERROR] search_shelter_by_location: {e}")
             import traceback
-
             traceback.print_exc()
             return {"text": f"검색 중 오류 발생: {str(e)}", "structured_data": None}
 
@@ -1056,102 +1108,98 @@ def create_langgraph_app(vectorstore):
         try:
             print(f"[search_location_with_disaster] 복합 질문 처리: {query}")
 
-            # 1단계: 위치명 추출 (재난 키워드 제거)
+            # 1단계: 재난 유형 감지
             disaster_keywords = [
-                "지진",
-                "홍수",
-                "태풍",
-                "화재",
-                "폭발",
-                "산사태",
-                "쓰나미",
-                "화산",
-                "방사능",
-                "가스",
-                "붕괴",
-                "테러",
-                "발생",
-                "발생하면",
-                "발생 시",
-                "났을 때",
-                "나면",
-                "때",
-                "근처인데",
-                "에서",
-                "어떻게",
-                "대처",
-                "행동요령",
+                "지진", "홍수", "태풍", "화재", "폭발", "산사태", 
+                "쓰나미", "화산", "방사능", "가스", "붕괴", "테러"
             ]
 
-            location_query = query
             detected_disaster = None
+            location_query = query
 
-            # 재난 유형 감지 및 제거
             for keyword in disaster_keywords:
                 if keyword in query:
-                    if keyword in [
-                        "지진",
-                        "홍수",
-                        "태풍",
-                        "화재",
-                        "폭발",
-                        "산사태",
-                        "쓰나미",
-                        "화산",
-                        "방사능",
-                        "가스",
-                        "붕괴",
-                        "테러",
-                    ]:
-                        detected_disaster = keyword
+                    detected_disaster = keyword
                     location_query = location_query.replace(keyword, "")
+                    break
 
-            # 위치 쿼리 정제
+            # "발생", "나면", "났을 때" 등 제거
+            for word in ["발생", "발생하면", "발생 시", "났을 때", "나면", "때", "근처인데", "에서", "어떻게", "대처", "행동요령"]:
+                location_query = location_query.replace(word, "")
+
             location_query = location_query.strip()
-            print(f"[search_location_with_disaster] 추출된 위치: '{location_query}'")
-            print(f"[search_location_with_disaster] 감지된 재난: '{detected_disaster}'")
-
+            
             if not detected_disaster:
                 return {
                     "text": "재난 유형을 파악할 수 없습니다. 예: '설악산 산사태', '강남역 지진'",
                     "structured_data": None,
                 }
 
-            # 2단계: 카카오 API로 위치 좌표 검색
+            print(f"[search_location_with_disaster] 위치: '{location_query}', 재난: '{detected_disaster}'")
+
+            # 2단계: 질문 재정의로 위치 유형 판단 (search_shelter_by_location과 동일)
+            rewritten = query_rewrite_chain.invoke({"original_query": location_query})
+            
+            kakao_query = location_query
+            location_type = "specific"
+            
+            try:
+                import json
+                parsed = json.loads(rewritten)
+                kakao_query = parsed.get("kakao", location_query)
+                vector_query = parsed.get("vector", location_query)
+                location_type = parsed.get("location_type", "specific")
+                
+                print(f"[search_location_with_disaster] 위치 유형: {location_type}")
+                print(f"[search_location_with_disaster] 카카오용: '{kakao_query}'")
+                print(f"[search_location_with_disaster] Vector용: '{vector_query}'")
+                
+            except:
+                # JSON 파싱 실패 시 기존 정제 로직
+                remove_words = ["근처", "주변", "인근", "대피소", "피난소", "피난처"]
+                for word in remove_words:
+                    kakao_query = kakao_query.replace(word, "")
+                kakao_query = " ".join(kakao_query.split()).strip()
+
+            print(f"[search_location_with_disaster] 최종 카카오 검색어: '{kakao_query}' ({location_type})")
+
+            # 3단계: 카카오 API로 좌표 검색 (search_shelter_by_location과 동일)
             kakao_api_key = os.getenv("KAKAO_REST_API_KEY")
             if not kakao_api_key:
-                return {
-                    "text": "카카오 API 키가 설정되지 않았습니다.",
-                    "structured_data": None,
-                }
+                return {"text": "카카오 API 키가 설정되지 않았습니다.", "structured_data": None}
 
             headers = {"Authorization": f"KakaoAK {kakao_api_key}"}
             url = "https://dapi.kakao.com/v2/local/search/keyword.json"
-            params = {"query": location_query}
+            params = {"query": kakao_query}
 
-            response = requests.get(url, headers=headers, params=params)
-            data = response.json()
+            try:
+                response = requests.get(url, headers=headers, params=params)
+                data = response.json()
 
-            if not data.get("documents"):
+                if not data.get("documents"):
+                    return {
+                        "text": f"'{kakao_query}' 위치를 찾을 수 없습니다.",
+                        "structured_data": None,
+                    }
+
+                place = data["documents"][0]
+                user_lat = float(place["y"])
+                user_lon = float(place["x"])
+                place_name = place["place_name"]
+                
+                location_desc = f"{place_name} ({location_type})"
+                print(f"[search_location_with_disaster] 장소 확인: {location_desc} ({user_lat}, {user_lon})")
+
+            except Exception as e:
+                print(f"[search_location_with_disaster] 카카오 API 오류: {e}")
                 return {
-                    "text": f"'{location_query}' 위치를 찾을 수 없습니다.",
+                    "text": f"카카오 API 호출 중 오류가 발생했습니다: {str(e)}",
                     "structured_data": None,
                 }
 
-            # 좌표 추출
-            place = data["documents"][0]
-            user_lat = float(place["y"])
-            user_lon = float(place["x"])
-            place_name = place["place_name"]
-
-            print(
-                f"[search_location_with_disaster] 좌표: {place_name} ({user_lat}, {user_lon})"
-            )
-
-            # 3단계: 근처 대피소 검색
+            # 4단계: 근처 대피소 검색 (거리 계산)
             def haversine(lat1, lon1, lat2, lon2):
                 from math import radians, sin, cos, sqrt, atan2
-
                 R = 6371
                 dlat = radians(lat2 - lat1)
                 dlon = radians(lon2 - lon1)
@@ -1182,6 +1230,7 @@ def create_langgraph_app(vectorstore):
                             "distance": distance,
                             "capacity": int(metadata.get("capacity", 0)),
                             "shelter_type": metadata.get("shelter_type", "N/A"),
+                            "facility_type": metadata.get("facility_type", "N/A"),
                         }
                     )
                 except Exception:
@@ -1190,7 +1239,13 @@ def create_langgraph_app(vectorstore):
             shelters.sort(key=lambda x: x["distance"])
             top_3 = shelters[:3]  # 가장 가까운 3곳만
 
-            # 4단계: 재난 행동요령 검색
+            if not top_3:
+                return {
+                    "text": f"'{place_name}' 근처에 대피소를 찾을 수 없습니다.",
+                    "structured_data": None,
+                }
+
+            # 5단계: 재난 행동요령 검색
             guideline_text = ""
             if guideline_hybrid:
                 try:
@@ -1202,14 +1257,11 @@ def create_langgraph_app(vectorstore):
                         )
                 except Exception as e:
                     print(f"[search_location_with_disaster] 가이드라인 검색 실패: {e}")
-                    guideline_text = (
-                        f"{detected_disaster} 관련 행동요령을 찾을 수 없습니다."
-                    )
+                    guideline_text = f"{detected_disaster} 관련 행동요령을 찾을 수 없습니다."
 
-            # 5단계: 통합 결과 생성
-            result = f"""🚨 **{place_name} 근처 {detected_disaster} 발생 시 대응 가이드**
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            # 6단계: 통합 결과 생성
+            location_text = "지역" if location_type == "region" else "위치"
+            result = f"""🚨 **{place_name} {location_text} 기준 {detected_disaster} 발생 시 대응 가이드**
 
     📍 **가장 가까운 대피소 {len(top_3)}곳**
 
@@ -1218,17 +1270,13 @@ def create_langgraph_app(vectorstore):
             for i, s in enumerate(top_3, 1):
                 result += f"{i}. **{s['name']}** ({s['distance']:.2f}km)\n"
                 result += f"   📍 {s['address']}\n"
-                result += (
-                    f"   📍 위치: {s['shelter_type']} | 수용: {s['capacity']:,}명\n\n"
-                )
+                result += f"   📍 위치: {s['shelter_type']} | 수용: {s['capacity']:,}명\n\n"
 
-            result += f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            result += f"""
 
     🚨 **{detected_disaster} 행동요령**
 
     {guideline_text}
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     💡 **즉시 행동 체크리스트**
     ✅ 가장 가까운 대피소로 이동
@@ -1239,7 +1287,9 @@ def create_langgraph_app(vectorstore):
             # 구조화된 데이터 (지도 표시용)
             structured_data = {
                 "location": place_name,
-                "coordinates": (user_lat, user_lon),
+                "location_type": location_type,  # NEW
+                "user_coordinates": [user_lat, user_lon],  # 사용자 위치 (길찾기용)
+                "coordinates": [user_lat, user_lon],
                 "shelters": top_3,
                 "total_count": len(all_data["metadatas"]),
             }
@@ -1249,7 +1299,6 @@ def create_langgraph_app(vectorstore):
         except Exception as e:
             print(f"[ERROR] search_location_with_disaster: {e}")
             import traceback
-
             traceback.print_exc()
             return {
                 "text": f"복합 검색 중 오류 발생: {str(e)}",
@@ -1326,130 +1375,15 @@ def create_langgraph_app(vectorstore):
 
     # 10. 노드 함수들
     def intent_classifier_node(state: AgentState):
-        """의도 분류 노드 (시간 측정)"""
+        """의도 분류 노드 (LLM만 사용)"""
         start_time = time.time()
         messages = state["messages"]
         last_message = messages[-1].content
 
         print(f"\n[의도분류 노드] 입력: {last_message}")
 
-        # 1단계: 빠른 키워드 매칭 (대부분의 케이스 처리)
-        keyword_rules = {
-            # 1. 위치 + 재난 복합 질문 (최우선)
-            "hybrid_location_disaster": [
-                # 자연재해
-                (["지진", "earthquake"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["홍수", "침수", "범람", "flood"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["산사태", "토사", "landslide"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["폭풍", "강풍", "storm"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["쓰나미", "해일", "tsunami"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["태풍", "typhoon"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["화산", "volcanic", "화산재", "분화"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                
-                # 사회재해
-                (["화재", "fire", "불", "연기"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["가스", "gas", "누출"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["방사능", "radiation", "방사선", "원전"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["댐", "dam", "붕괴"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-                (["산불", "wildfire"], ["근처", "에서", "때", "시", "발생", "났을", "나면"]),
-            ],
-            
-            # 2. 특정 시설 정보 조회
-            "shelter_info": [
-                (["수용인원", "수용", "최대", "몇명", "인원"], ["시설", "대피소", "학교", "아파트", "맨션"]),
-                (["정보", "상세", "알려", "찾아"], ["대피소", "시설"]),
-                # 구체적인 시설명 패턴
-                (["맨션", "아파트", "학교", "센터", "월드", "타워"], ["수용", "정보", "몇"]),
-            ],
-            
-            # 3. 위치 기반 대피소 검색 (재난 키워드 없음)
-            "shelter_search": [
-                (["근처", "주변", "인근", "가까운"], ["대피소", "피난", "피난소", "shelter"]),
-                (["어디", "찾아", "알려"], ["대피소", "피난"]),
-                # 지역명 단독 + 대피소
-                (["대피소", "피난소"], []),  # "OO 대피소"만 있는 경우
-            ],
-            
-            # 4. 대피소 개수/통계
-            "shelter_count": [
-                (["몇", "개수", "얼마나", "how many"], ["대피소", "시설"]),
-                (["총", "전체"], ["대피소", "개", "개수"]),
-            ],
-            
-            # 5. 수용인원 기준 검색
-            "shelter_capacity": [
-                (["명", "천명", "만명", "백명"], ["이상", "이하", "수용", "가능"]),
-                (["이상", "이하"], ["수용", "인원"]),
-                # 숫자 + 명 패턴 감지 (정규식 체크는 다음 단계에서)
-            ],
-            
-            # 6. 재난 행동요령 (위치 없음)
-            "disaster_guideline": [
-                # 자연재해 행동요령
-                (["지진", "earthquake"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["홍수", "침수", "flood"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["산사태", "landslide"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["폭풍", "storm"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["쓰나미", "tsunami"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["태풍", "typhoon"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["화산", "volcanic"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                
-                # 사회재해 행동요령
-                (["화재", "fire"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["가스", "gas"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["방사능", "radiation"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["댐", "dam"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-                (["산불", "wildfire"], ["행동요령", "대처", "어떻게", "방법", "행동", "대응"]),
-            ],
-            
-            # 7. 일반 지식 질문
-            "general_knowledge": [
-                (["뭐야", "무엇", "이란", "의미", "정의", "what"], ["지진", "홍수", "화재", "재난"]),
-                (["왜", "이유", "원인", "why"], ["발생", "일어"]),
-                (["특징", "차이", "구분"], []),
-            ],
-            
-            # 8. 일반 대화
-            "general_chat": [
-                (["안녕", "hello", "hi"], []),
-                (["고마워", "감사", "thank"], []),
-                (["도움", "help"], []),
-            ],
-        }
-
-        # 키워드 매칭 시도 (우선순위: hybrid > info > capacity > search > guideline)
-        for intent in [
-            "hybrid_location_disaster",  # 최우선
-            "shelter_info",
-            "shelter_capacity",
-            "shelter_count",
-            "shelter_search",
-            "disaster_guideline",
-            "general_knowledge",
-            "general_chat",
-        ]:
-            rules = keyword_rules.get(intent, [])
-            for required_keywords_groups in rules:
-                # 모든 그룹에서 최소 1개씩 키워드 매칭
-                if all(
-                    any(kw in last_message for kw in group) if group else True
-                    for group in required_keywords_groups
-                ):
-                    elapsed = time.time() - start_time
-                    print(f"⏱️ [의도분류 시간 (키워드)] {elapsed:.3f}초")
-                    print(f"[의도분류 노드] 결과: {intent} (키워드 매칭)")
-                    return {"intent": intent}
-
-        # 특수 케이스: 숫자 + 명 패턴 → shelter_capacity
-        import re
-        if re.search(r'\d+\s*(명|천|만|백)', last_message):
-            elapsed = time.time() - start_time
-            print(f"⏱️ [의도분류 시간 (숫자 패턴)] {elapsed:.3f}초")
-            print(f"[의도분류 노드] 결과: shelter_capacity (숫자 패턴 매칭)")
-            return {"intent": "shelter_capacity"}
-
-        # 2단계: 키워드로 판단 불가능한 경우만 LLM 사용
         try:
+            # LLM 기반 의도 분류
             intent_result = intent_chain.invoke({"query": last_message})
             intent_data = json.loads(intent_result)
             intent = intent_data["intent"]
@@ -1481,10 +1415,27 @@ def create_langgraph_app(vectorstore):
 
         try:
             rewritten = query_rewrite_chain.invoke({"original_query": last_message})
-            elapsed = time.time() - start_time
-            print(f"⏱️ [질문재정의 시간] {elapsed:.3f}초")
-            print(f"[질문재정의 노드] 결과: {rewritten}")
-            return {"rewritten_query": rewritten}
+            
+            # JSON 파싱 시도
+            try:
+                import json
+                parsed = json.loads(rewritten)
+                kakao_query = parsed.get("kakao", last_message)
+                vector_query = parsed.get("vector", last_message)
+                
+                print(f"[질문재정의] 카카오용: {kakao_query}")
+                print(f"[질문재정의] Vector용: {vector_query}")
+                
+                # State에 두 쿼리 모두 저장
+                return {
+                    "rewritten_query": vector_query,  # 기본값 (기존 로직 유지)
+                    "kakao_query": kakao_query,       # 카카오 전용 (NEW)
+                }
+            except (json.JSONDecodeError, KeyError):
+                # JSON 파싱 실패 시 기존 방식 사용
+                print(f"[질문재정의] 단일 쿼리: {rewritten}")
+                return {"rewritten_query": rewritten}
+            
         except Exception as e:
             elapsed = time.time() - start_time
             print(f"⏱️ [질문재정의 시간 (실패)] {elapsed:.3f}초")
