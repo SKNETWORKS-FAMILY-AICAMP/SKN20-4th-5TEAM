@@ -252,6 +252,13 @@ async def extract_location(request: LocationExtractRequest = Body(...)):
         final_message = result["messages"][-1]
         structured_data = result.get("structured_data", None)
 
+        # [2026-01-08 추가] 사용된 도구명 추출 로직 (messages를 역순으로 훑어 tool_calls 탐색)
+        tool_used = None
+        for msg in reversed(result["messages"]):
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                tool_used = msg.tool_calls[0]["name"]
+                break
+
         # 총 처리 시간
         total_time = time.time() - request_start
 
@@ -259,6 +266,7 @@ async def extract_location(request: LocationExtractRequest = Body(...)):
         print(f"⏱️ [성능 측정 결과]")
         print(f"  - LangGraph 실행 시간: {langgraph_time:.3f}초")
         print(f"  - API 총 처리 시간: {total_time:.3f}초")
+        print(f"  - 탐지된 도구: {tool_used}") # 로그 추가
         print(f"{'='*60}\n")
 
         if structured_data:
@@ -270,7 +278,8 @@ async def extract_location(request: LocationExtractRequest = Body(...)):
                 shelters=structured_data.get("shelters", []),
                 total_count=structured_data.get("total_count", 0),
                 message=final_message.content,
-                intent=result.get("intent") # 2026-01-07 추가
+                intent=result.get("intent"),
+                tool_used=tool_used # 추출된 도구명 전달
             )
         else:
             print(f"[INFO] 텍스트 응답 반환")
@@ -281,7 +290,8 @@ async def extract_location(request: LocationExtractRequest = Body(...)):
                 shelters=[],
                 total_count=0,
                 message=final_message.content,
-                intent=result.get("intent") # 2026-01-07 추가
+                intent=result.get("intent"),
+                tool_used=tool_used
             )
 
     except Exception as e:

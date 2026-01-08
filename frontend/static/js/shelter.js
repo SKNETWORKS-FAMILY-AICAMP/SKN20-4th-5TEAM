@@ -684,6 +684,14 @@ function handleGeolocation() {
 async function onSuccessGeolocation(position) {
     const lat = position.coords.latitude;
     const lon = position.coords.longitude;
+    const userPosition = new kakao.maps.LatLng(lat, lon);
+
+    // [2026-01-08 핵심수정] 전역 변수 업데이트하여 다음 검색에서도 유지되도록 함
+    currentUserPosition = {
+        lat: lat,
+        lon: lon,
+        position: userPosition
+    };
 
     addMessage("bot", `위치확인 완료! (lat ${lat.toFixed(4)}, lon ${lon.toFixed(4)})`);
     addMessage("bot", "🔍 주변 대피소 탐색 중...");
@@ -721,7 +729,33 @@ async function handleChatInput() {
     if (!query) return;
 
     hidePanorama();
-    closeNavDrawer(); // 새 검색 시작 시 패널 닫기 (버튼 표시 여부는 로직에 따름)
+    // [2026-01-08 추가] 새 검색 시작 시 길찾기 UI 초기화
+    if (navToggleBtn) navToggleBtn.classList.add('hidden');
+    if (navSummary) navSummary.innerHTML = "";
+    // 지도 초기화: 기존 마커/경로 제거 및 현재 위치로 이동
+    if (typeof map !== 'undefined' && map) {
+        // 기존 쉘터 마커 및 경구 마커 제거
+        markers.forEach(m => m.setMap(null));
+        markers = [];
+        routeMarkers.forEach(m => m.setMap(null));
+        routeMarkers = [];
+        if (currentPath) { currentPath.setMap(null); currentPath = null; }
+        if (currentPathBg) { currentPathBg.setMap(null); currentPathBg = null; }
+        if (movingArrow) { movingArrow.setMap(null); movingArrow = null; }
+        if (arrowAnimId) { clearTimeout(arrowAnimId); arrowAnimId = null; }
+
+        // 현재 위치가 있으면 그곳을 중심으로 설정하고 마커 표시
+        if (currentUserPosition && currentUserPosition.position) {
+            map.setCenter(currentUserPosition.position);
+            // 현재 위치 표지판(userMarker)을 '현재 위치'로 강제 업데이트
+            createUserMarker(currentUserPosition.position, currentUserPosition.lat, currentUserPosition.lon);
+        } else {
+            // 위치 정보가 없는 경우 기본 좌표(서울) 사용
+            const defaultCenter = new kakao.maps.LatLng(37.5665, 126.9780);
+            map.setCenter(defaultCenter);
+        }
+    }
+    closeNavDrawer(); // 새 검색 시작 시 패널 닫기
     addMessage("user", query);
     setControlsDisabled(true);
 
@@ -753,7 +787,7 @@ async function handleChatInput() {
     }
 
     if (result.shelters && result.shelters.length > 0 && result.coordinates) {
-        displayShelterResults(result.location, result.coordinates, result.shelters, result.intent); // intent 추가 전달
+        displayShelterResults(result.location, result.coordinates, result.shelters, result.intent, result.tool_used); // intent, tool_used 추가 전달
     } else {
         resetMapToCurrentLocation();
     }
@@ -867,14 +901,16 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
         // 출발/도착 마커 표시 - [2026-01-07 크기 대폭 확대]
         const startMarker = new kakao.maps.CustomOverlay({
             position: linePath[0],
-            content: '<div style="background:#10B981;color:white;padding:8px 11px;border-radius:25px;font-weight:900;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white; opacity: 0.45;">S</div>',
+            content: '<div style="display:flex; align-items:center; justify-content:center; width:44px; height:44px; background:#10B981; color:white; border-radius:50%; font-weight:900; font-size:24px; box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white; opacity: 0.6; pointer-events:none;">S</div>',
+            xAnchor: 0.45,
             yAnchor: 1.2,
             zIndex: 1001
         });
         const endMarker = new kakao.maps.CustomOverlay({
             position: linePath[linePath.length - 1],
-            content: '<div style="background:#EF4444;color:white;padding:8px 11px;border-radius:25px;font-weight:900;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white; opacity: 0.45;">E</div>',
-            yAnchor: 1.2,
+            content: '<div style="display:flex; align-items:center; justify-content:center; width:44px; height:44px; background:#EF4444; color:white; border-radius:50%; font-weight:900; font-size:24px; box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white; opacity: 0.6; pointer-events:none;">E</div>',
+            xAnchor: 0.45,
+            yAnchor: 1.7, // 조금 더 위로 올림
             zIndex: 1001
         });
 
@@ -1026,7 +1062,7 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
 }
 */
 
-function displayShelterResultsCurrent(locationName, coords, shelters, intent = null) {
+function displayShelterResultsCurrent(locationName, coords, shelters, intent = null, tool_used = null) {
     const nearest = shelters[0];
     const userLat = coords[0];
     const userLon = coords[1];
@@ -1040,9 +1076,11 @@ function displayShelterResultsCurrent(locationName, coords, shelters, intent = n
         `;
     });
 
-    // [2026-01-07 수정] 길찾기가 불필요한 의도 목록 확장
-    const NO_DIRECTIONS_INTENTS = ['shelter_info', 'shelter_count', 'shelter_capacity', 'disaster_guideline', 'general_knowledge', 'general_chat'];
-    const hideDirections = NO_DIRECTIONS_INTENTS.includes(intent);
+    // [2026-01-08 수정] 특정 도구가 사용되었거나 결과가 1개인 경우 길찾기 생략
+    const NO_DIRECTIONS_INTENTS = ['shelter_count', 'shelter_capacity', 'disaster_guideline', 'general_knowledge', 'general_chat'];
+    const hideDirections = (intent === 'shelter_info' && tool_used === 'search_shelter_by_name') ||
+        shelters.length === 1 ||
+        NO_DIRECTIONS_INTENTS.includes(intent);
 
     const directionsBtn = hideDirections ? '' : `
         <button onclick="drawRoute(${userLat}, ${userLon}, ${nearest.lat}, ${nearest.lon})" 
@@ -1080,20 +1118,24 @@ function displayShelterResultsCurrent(locationName, coords, shelters, intent = n
         drawRoute(userLat, userLon, nearest.lat, nearest.lon);
     } else {
         console.log("ℹ️ 시설 정보 조회 의도이므로 길찾기를 건너뜁니다.");
+        if (navSummary) navSummary.innerHTML = ""; // 기존 경로 요약 제거
+        if (navToggleBtn) navToggleBtn.classList.add('hidden'); // 버튼 숨김
         if (typeof closeNavDrawer === 'function') closeNavDrawer(); // 내비 드로워 닫기
     }
 
     setControlsDisabled(false);
 }
 
-function displayShelterResults(locationName, coords, shelters, intent = null) {
+function displayShelterResults(locationName, coords, shelters, intent = null, tool_used = null) {
     const nearest = shelters[0];
     const userLat = coords[0];
     const userLon = coords[1];
 
-    // [2026-01-07 수정] 길찾기가 불필요한 의도 목록 확장
-    const NO_DIRECTIONS_INTENTS = ['shelter_info', 'shelter_count', 'shelter_capacity', 'disaster_guideline', 'general_knowledge', 'general_chat'];
-    const hideDirections = NO_DIRECTIONS_INTENTS.includes(intent);
+    // [2026-01-08 수정] 특정 도구가 사용되었거나 결과가 1개인 경우 길찾기 생략
+    const NO_DIRECTIONS_INTENTS = ['shelter_count', 'shelter_capacity', 'disaster_guideline', 'general_knowledge', 'general_chat'];
+    const hideDirections = (intent === 'shelter_info' && tool_used === 'search_shelter_by_name') ||
+        shelters.length === 1 ||
+        NO_DIRECTIONS_INTENTS.includes(intent);
 
     const directionsBtn = hideDirections ? '' : `
         <button onclick="drawRoute(${userLat}, ${userLon}, ${nearest.lat}, ${nearest.lon})" 
@@ -1125,6 +1167,8 @@ function displayShelterResults(locationName, coords, shelters, intent = null) {
         drawRoute(userLat, userLon, nearest.lat, nearest.lon);
     } else {
         console.log("ℹ️ 시설 정보 조회 의도이므로 길찾기를 건너뜁니다.");
+        if (navSummary) navSummary.innerHTML = ""; // 기존 경로 요약 제거
+        if (navToggleBtn) navToggleBtn.classList.add('hidden'); // 버튼 숨김
         if (typeof closeNavDrawer === 'function') closeNavDrawer(); // 내비 드로워 닫기
     }
 
