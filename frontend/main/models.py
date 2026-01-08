@@ -17,18 +17,11 @@ def generate_disaster_id():
 class Advertisement(models.Model):
     """광고 관리 (CSV 데이터 기반)"""
     
-    AD_KIND_CHOICES = [
-        ('distermind', '심리상담'),
-        ('missing_child', '실종아동'),
-        ('sk_aicamp', 'SK AI캠프'),
-        ('volunteer', '자원봉사'),
-    ]
-    
     ad_kind = models.CharField(
-        max_length=50,
-        choices=AD_KIND_CHOICES,
+        max_length=100,
         verbose_name="광고 종류",
-        db_column='AD_Kind'
+        db_column='AD_Kind',
+        help_text="예: 심리상담, 실종아동, SK AI캠프, 자원봉사 등"
     )
     ad_id = models.CharField(
         max_length=50,
@@ -113,7 +106,7 @@ class Advertisement(models.Model):
         ]
     
     def __str__(self):
-        return f"[{self.get_ad_kind_display()}] {self.ad_id}"
+        return f"[{self.ad_kind}] {self.ad_id}"
 
 
 class DisasterVideo(models.Model):
