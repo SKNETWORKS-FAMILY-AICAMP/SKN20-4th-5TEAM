@@ -1144,10 +1144,10 @@ function animateMovingArrow(path) {
     // 만약 이미 있다면 제거
     if (movingArrow) movingArrow.setMap(null);
 
-    // 움직이는 화살표 생성 (커스텀 오버레이)
+    // 움직이는 사람 아이콘 생성 (커스텀 오버레이)
     movingArrow = new kakao.maps.CustomOverlay({
         position: path[0],
-        content: `<div style="color: #FFD700; font-size: 28px; text-shadow: 0 0 8px rgba(0,0,0,0.6); font-weight: 900; filter: drop-shadow(0 0 4px red); pointer-events: none;">➤</div>`,
+        content: `<div class="walking-icon" style="font-size: 32px; filter: drop-shadow(0 0 5px rgba(0,0,0,0.3)); pointer-events: none;">🚶</div>`,
         zIndex: 1005
     });
     movingArrow.setMap(map);
@@ -1161,15 +1161,15 @@ function animateMovingArrow(path) {
         const start = path[step];
         const end = path[step + 1];
 
-        // 각도 계산 및 회전 적용
-        const angle = Math.atan2(end.getLat() - start.getLat(), end.getLng() - start.getLng()) * 180 / Math.PI;
-        const rotation = -angle;
+        // 진행 방향에 따라 좌우 반전 처리 (경도 비교)
+        const isLeft = end.getLng() < start.getLng();
+        const flip = isLeft ? "scaleX(-1)" : "scaleX(1)";
 
         movingArrow.setPosition(start);
-        movingArrow.setContent(`<div style="transform: rotate(${rotation}deg); color: #FFD700; font-size: 28px; text-shadow: 0 0 8px rgba(0,0,0,0.6); font-weight: 900; filter: drop-shadow(0 0 4px red); pointer-events: none;">➤</div>`);
+        movingArrow.setContent(`<div class="walking-icon" style="transform: ${flip}; font-size: 32px; filter: drop-shadow(0 0 5px rgba(0,0,0,0.3)); pointer-events: none;">🚶</div>`);
 
         step++;
-    }, 150); // 0.15초 간격으로 이동
+    }, 200); // 0.2초 간격으로 이동 (걷는 속도감)
 }
 
 /* ═══════════════════════════════════════════════════════════════════
