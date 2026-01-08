@@ -13,3 +13,4 @@
 /frontend/main/__pycache__/
 /frontend/main/migrations/
 /frontend/staticfiles/
+frontend/main/management/commands/__pycache__/import_csv.cpython-311.pyc
