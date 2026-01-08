@@ -4,7 +4,7 @@
 
 <p align="center">
   🚨 <strong>민방위 대피시설 + 재난 행동요령 데이터 기반 Advanced RAG 시스템</strong><br>
-  <sub>SK Networks Family 20기 — 4TH 5TEAM | <b>프론트앤드 중점,,,?</b></sub>
+  <sub>SK Networks Family 20기 — 4TH 5TEAM | <b>프론트앤드 중점,,,?뭐라고 쓰나요</b></sub>
 </p>
 
 <p align="center">
@@ -333,7 +333,7 @@ KAKAO_MAP_API_KEY=your_kakao_map_api_key
 TMAP_API_KEY=your_tmap_api_key
 ```
 
-### 2️⃣ 패키지 설치(docker랑 같이 생각해야할듯..?)
+### 2️⃣ 패키지 설치(규리님docker랑 같이 생각해야할듯..?)
 
 ```bash
 # 백엔드
