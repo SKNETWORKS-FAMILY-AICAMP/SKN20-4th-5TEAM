@@ -15,7 +15,11 @@ let userMarker = null;
 let markers = [];
 let infoWindows = [];
 let currentPath = null; // 2026-01-06: 현재 지도에 그려진 경로(Polyline)
+let currentPathBg = null; // 2026-01-08: 경로 외곽선(그림자) 효과
 let routeMarkers = [];  // 2026-01-06: 길찾기 출발/도착 지점 마커 관리
+let routeArrows = [];   // 2026-01-08: 경로 위 정적 화살표
+let movingArrow = null; // 2026-01-08: 이동 애니메이션 화살표
+let arrowAnimId = null; // 2026-01-08: 애니메이션 타이머/ID
 let currentUserPosition = null;
 
 /**
@@ -209,9 +213,18 @@ function updateLlmBadge() {
  * 채팅 메시지 추가
  */
 function addMessage(sender, text, isResult = false) {
+    const chatWindow = document.getElementById('chat-window');
     const wrap = document.createElement('div');
     const avatar = document.createElement('div');
     const box = document.createElement('div');
+
+    // [2026-01-08 추가] 이전의 모든 봇 아바타를 정지 이미지로 변경
+    if (sender !== "user") {
+        const allBotImages = chatWindow.querySelectorAll('img[alt="Bot Avatar"]');
+        allBotImages.forEach(img => {
+            img.src = "/static/images/bot2.png";
+        });
+    }
 
     if (sender === "user") {
         wrap.className = "flex justify-end mb-4 px-2 hover:opacity-95 transition-all";
@@ -223,7 +236,8 @@ function addMessage(sender, text, isResult = false) {
 
         // 캐릭터 아바타 추가
         avatar.className = "flex-shrink-0 w-12 h-12 rounded-2xl overflow-hidden shadow-lg bg-white transform group-hover:scale-105 transition-transform duration-300";
-        avatar.innerHTML = `<img src="/static/images/bot2.png" class="w-full h-full object-cover" alt="Bot Avatar">`;
+        // 최신 메시지는 GIF 사용
+        avatar.innerHTML = `<img src="/static/images/bot2_talking_v2.gif" class="w-full h-full object-cover" alt="Bot Avatar">`;
 
         if (isResult) {
             box.style.background = "#FFFFFF";
@@ -766,11 +780,18 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
     }
 
     // 기존 경로 및 마커 제거
-    if (currentPath) {
-        currentPath.setMap(null);
+    if (currentPath) currentPath.setMap(null);
+    if (currentPathBg) currentPathBg.setMap(null);
+    if (movingArrow) movingArrow.setMap(null);
+    if (arrowAnimId) {
+        clearInterval(arrowAnimId);
+        arrowAnimId = null;
     }
+
     routeMarkers.forEach(marker => marker.setMap(null));
     routeMarkers = [];
+    routeArrows.forEach(arrow => arrow.setMap(null));
+    routeArrows = [];
 
     // [2026-01-06 수정] 탭 초기화 (팝업 대신 탭 영역 사용)
     const navSummaryEl = document.getElementById('nav-summary');
@@ -840,19 +861,19 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
             strokeOpacity: 0.8,
             strokeStyle: 'solid'
         });
-
         currentPath.setMap(map);
+
 
         // 출발/도착 마커 표시 - [2026-01-07 크기 대폭 확대]
         const startMarker = new kakao.maps.CustomOverlay({
             position: linePath[0],
-            content: '<div style="background:#10B981;color:white;padding:10px 22px;border-radius:25px;font-weight:900;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white;">S</div>',
+            content: '<div style="background:#10B981;color:white;padding:8px 11px;border-radius:25px;font-weight:900;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white; opacity: 0.45;">S</div>',
             yAnchor: 1.2,
             zIndex: 1001
         });
         const endMarker = new kakao.maps.CustomOverlay({
             position: linePath[linePath.length - 1],
-            content: '<div style="background:#EF4444;color:white;padding:10px 22px;border-radius:25px;font-weight:900;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white;">E</div>',
+            content: '<div style="background:#EF4444;color:white;padding:8px 11px;border-radius:25px;font-weight:900;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:1001; border:3px solid white; opacity: 0.45;">E</div>',
             yAnchor: 1.2,
             zIndex: 1001
         });
@@ -887,6 +908,9 @@ async function drawRoute(originLat, originLon, destLat, destLon) {
         const bounds = new kakao.maps.LatLngBounds();
         linePath.forEach(point => bounds.extend(point));
         map.setBounds(bounds);
+
+        // [2026-01-08 추가] 이동하는 화살표 애니메이션 시작
+        animateMovingArrow(linePath);
 
         console.log("🛣️ T Map 기반 경로 안내 완료 (2026-01-07)");
 
@@ -1107,6 +1131,46 @@ function displayShelterResults(locationName, coords, shelters, intent = null) {
     setControlsDisabled(false);
 }
 
+
+/**
+ * 경로를 따라 이동하는 화살표 애니메이션 (2026-01-08 추가)
+ */
+function animateMovingArrow(path) {
+    if (!path || path.length < 2) return;
+
+    let step = 0;
+    const totalSteps = path.length;
+
+    // 만약 이미 있다면 제거
+    if (movingArrow) movingArrow.setMap(null);
+
+    // 움직이는 화살표 생성 (커스텀 오버레이)
+    movingArrow = new kakao.maps.CustomOverlay({
+        position: path[0],
+        content: `<div style="color: #FFD700; font-size: 28px; text-shadow: 0 0 8px rgba(0,0,0,0.6); font-weight: 900; filter: drop-shadow(0 0 4px red); pointer-events: none;">➤</div>`,
+        zIndex: 1005
+    });
+    movingArrow.setMap(map);
+
+    // 일정 시간마다 화살표 위치 업데이트
+    arrowAnimId = setInterval(() => {
+        if (step >= totalSteps - 1) {
+            step = 0; // 도착하면 다시 출발지로 (무한 반복)
+        }
+
+        const start = path[step];
+        const end = path[step + 1];
+
+        // 각도 계산 및 회전 적용
+        const angle = Math.atan2(end.getLat() - start.getLat(), end.getLng() - start.getLng()) * 180 / Math.PI;
+        const rotation = -angle;
+
+        movingArrow.setPosition(start);
+        movingArrow.setContent(`<div style="transform: rotate(${rotation}deg); color: #FFD700; font-size: 28px; text-shadow: 0 0 8px rgba(0,0,0,0.6); font-weight: 900; filter: drop-shadow(0 0 4px red); pointer-events: none;">➤</div>`);
+
+        step++;
+    }, 150); // 0.15초 간격으로 이동
+}
 
 /* ═══════════════════════════════════════════════════════════════════
  * 초기화

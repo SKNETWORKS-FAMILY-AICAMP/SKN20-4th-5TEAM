@@ -58,3 +58,77 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #059669;
 }
+
+/* [2026-01-08 추가] 걷는 애니메이션 효과 */
+@keyframes walking {
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(-8deg);
+    }
+
+    50% {
+        transform: translateY(-4px) rotate(8deg);
+    }
+}
+
+.walking-icon {
+    display: inline-block;
+    animation: walking 0.6s infinite ease-in-out;
+    transform-origin: bottom center;
+}
+
+/* [2026-01-08 수정] 실제 사이렌 경광등처럼 좌우 3D 회전하는 효과 */
+@keyframes real-siren {
+    0% {
+        transform: scaleX(1);
+        filter: brightness(1) drop-shadow(0 0 2px red);
+    }
+
+    25% {
+        transform: scaleX(0.1);
+        filter: brightness(3) drop-shadow(0 0 15px red);
+    }
+
+    50% {
+        transform: scaleX(-1);
+        filter: brightness(1) drop-shadow(0 0 2px red);
+    }
+
+    75% {
+        transform: scaleX(0.1);
+        filter: brightness(3) drop-shadow(0 0 15px red);
+    }
+
+    100% {
+        transform: scaleX(1);
+        filter: brightness(1) drop-shadow(0 0 2px red);
+    }
+}
+
+.siren-icon {
+    display: inline-block;
+    animation: real-siren 0.6s infinite linear;
+    transform-origin: center center;
+}
+
+/* [2026-01-08 추가] 봇 말하기 애니메이션 효과 */
+@keyframes bot-talking {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    30% {
+        transform: scale(1.1) translateY(-3px) rotate(-1deg);
+    }
+
+    70% {
+        transform: scale(1.05) translateY(-1px) rotate(1deg);
+    }
+}
+
+.talking-bot img {
+    animation: bot-talking 0.4s infinite ease-in-out;
+}
