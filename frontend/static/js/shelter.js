@@ -759,6 +759,13 @@ async function handleChatInput() {
     addMessage("user", query);
     setControlsDisabled(true);
 
+    // [2026-01-08 추가] 채팅창에서 '음식점' 입력 시에도 영상 모드 연동
+    if (query.includes("음식점")) {
+        handleCategorySearch("음식점");
+        setControlsDisabled(false);
+        return;
+    }
+
     if (query.includes("현위치") || query.includes("내 위치") || query.includes("현재 위치")) {
         handleGeolocation();
         return;
@@ -1173,6 +1180,62 @@ function displayShelterResults(locationName, coords, shelters, intent = null, to
     }
 
     setControlsDisabled(false);
+}
+
+
+/**
+ * [2026-01-08 수정] DB에서 넘어온 영상 URL이 있으면 재생, 없으면 대피소 검색 실행
+ */
+function handleCategorySearch(category, videoUrl) {
+    if (!chatInput) return;
+
+    // [2026-01-08 동적 연동] DB에 등록된 영상 URL이 있는 경우 우선적으로 재생
+    if (videoUrl && videoUrl !== 'None' && videoUrl.trim() !== '') {
+        const videoOverlay = document.getElementById('video-overlay');
+        const videoIframe = document.getElementById('video-iframe');
+
+        if (videoOverlay && videoIframe) {
+            // 자동 재생 파라미터 추가 (주소 정규화)
+            let playUrl = videoUrl;
+            // watch?v= 형식을 embed/ 형식으로 변환하여 iframe 재생 가능하게 함
+            if (playUrl.includes('watch?v=')) {
+                playUrl = playUrl.replace('watch?v=', 'embed/');
+            }
+            if (playUrl.includes('youtube.com/embed') && !playUrl.includes('autoplay=1')) {
+                playUrl += (playUrl.includes('?') ? '&' : '?') + 'autoplay=1';
+            }
+
+            videoIframe.src = playUrl;
+            videoOverlay.classList.remove('hidden');
+            videoOverlay.classList.add('flex');
+            console.log(`🎥 ${category}: DB 등록 영상 재생`);
+            return;
+        }
+    }
+
+    // 영상이 없는 카테고리는 기존처럼 주변 대피소 검색 실행
+    const query = `근처 ${category} 대피소`;
+    chatInput.value = query;
+
+    console.log(`🔍 카테고리 검색 실행: ${query}`);
+    handleChatInput();
+}
+
+/**
+ * [2026-01-08 추가] 영상 오버레이 닫기
+ */
+function closeVideoOverlay() {
+    const videoOverlay = document.getElementById('video-overlay');
+    const videoIframe = document.getElementById('video-iframe');
+
+    if (videoOverlay) {
+        videoOverlay.classList.add('hidden');
+        videoOverlay.classList.remove('flex');
+    }
+    if (videoIframe) {
+        videoIframe.src = ""; // 영상 정지
+    }
+    console.log("🎥 영상 모드 종료");
 }
 
 

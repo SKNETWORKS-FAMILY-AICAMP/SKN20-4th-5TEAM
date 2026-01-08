@@ -132,3 +132,49 @@ body {
 .talking-bot img {
     animation: bot-talking 0.4s infinite ease-in-out;
 }
+
+/* [2026-01-08 수정] 지도 상단 카테고리 버튼 크기 축소 (전체 노출용) */
+.map-category-btn {
+    flex-shrink: 0;
+    background: white;
+    color: #374151;
+    /* gray-700 */
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 11px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1.5px solid #f3f4f6;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.map-category-btn img {
+    width: 18px;
+    height: 18px;
+}
+
+.map-category-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    border-color: #10B981;
+    color: #10B981;
+}
+
+.map-category-btn:active {
+    transform: scale(0.95);
+}
+
+/* 스크롤바 숨김 유틸리티 */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}

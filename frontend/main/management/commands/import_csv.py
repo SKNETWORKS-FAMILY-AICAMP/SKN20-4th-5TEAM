@@ -13,7 +13,7 @@ class Command(BaseCommand):
         parser.add_argument('--ads', type=str, help='광고 CSV 파일 경로')
         parser.add_argument('--videos', type=str, help='재난영상 CSV 파일 경로')
         parser.add_argument('--clear', action='store_true', help='기존 데이터 삭제 후 임포트')
-        parser.add_argument('--user', type=str, default='admin', help='등록자 username (기본값: admin)')
+        parser.add_argument('--user', type=str, default='khh11', help='등록자 username (기본값: khh11)')
 
     def handle(self, *args, **options):
         # 등록자 사용자 확인
@@ -140,8 +140,9 @@ class Command(BaseCommand):
                     # 필드명 정규화
                     normalized_row = {k.strip().replace('\ufeff', ''): v.strip() for k, v in row.items()}
                     
-                    disaster_kind = normalized_row.get('disaster_kind', '')
-                    youtube_link = normalized_row.get('youtube_link', '')
+                    # [2026-01-08 수정] 필드명 유연성 확보 (한국어 헤더 지원)
+                    disaster_kind = normalized_row.get('disaster_kind') or normalized_row.get('재난상황', '')
+                    youtube_link = normalized_row.get('youtube_link') or normalized_row.get('유튜브링크', '')
                     
                     if not disaster_kind or not youtube_link:
                         self.stdout.write(self.style.WARNING(
