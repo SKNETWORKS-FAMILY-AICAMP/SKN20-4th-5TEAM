@@ -63,7 +63,12 @@
                         <!-- [2026-01-08 수정] 모델 필드명 불일치 수정 (name -> disaster_kind, video_url -> youtube_link) -->
                         {% for item in disaster_videos %}
                         <button onclick="handleCategorySearch('{{ item.disaster_kind }}', '{{ item.youtube_link }}')"
-                            class="map-category-btn">{{ item.disaster_kind }}</button>
+                            class="map-category-btn">
+                            {{ item.disaster_kind }}
+                            {% if item.automatic_icon_path %}
+                            <img src="{% static item.automatic_icon_path %}" alt="{{ item.disaster_kind }}">
+                            {% endif %}
+                        </button>
                         {% endfor %}
                         <!-- [2026-01-08 수정] 커스텀 지진 아이콘 적용 및 재난 카테고리 정리 -->
                         <!-- <button onclick="handleCategorySearch('지진')" class="map-category-btn">

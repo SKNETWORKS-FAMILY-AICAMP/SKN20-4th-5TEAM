@@ -57,17 +57,19 @@ class DisasterVideoAdmin(admin.ModelAdmin):
     list_editable = ['is_active']
     ordering = ['disaster_kind', '-regist_date']
     date_hierarchy = 'regist_date'
+    # 20250109 아이콘 경로 추가 
+    list_display = ('disaster_kind', 'icon_path', 'is_active')
     
     fieldsets = (
         ('기본 정보', {
             'fields': ('disaster_kind', 'disaster_id', 'title', 'description')
         }),
         ('영상 정보', {
-            'fields': ('youtube_link', 'thumbnail_url', 'duration'),
+            'fields': ('youtube_link', 'thumbnail_url'),
             'description': 'YouTube 임베드 URL 예시: https://www.youtube.com/embed/VIDEO_ID'
         }),
         ('설정', {
-            'fields': ('is_active',)
+            'fields': ('is_active', 'icon_path')
         }),
         ('등록/수정 정보', {
             'fields': ('created_by', 'regist_date', 'modified_by', 'modify_date'),

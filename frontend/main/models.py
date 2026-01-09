@@ -127,7 +127,7 @@ class DisasterVideo(models.Model):
         ('산사태', '산사태'),
         ('호우', '호우'),
         ('해일', '해일'),
-        ('대풍', '대풍'),
+        ('태풍', '태풍'),
         ('화산재', '화산재'),
         ('화산폭발', '화산폭발'),
         ('댐붕괴', '댐붕괴'),
@@ -208,6 +208,24 @@ class DisasterVideo(models.Model):
         verbose_name="수정일",
         db_column='modify_date'
     )
+    # 20250109 카테고리 아이콘 경로(icon_path, icon_file_name) 추가
+    icon_path = models.CharField(
+        max_length=500,
+        verbose_name="이미지 경로",
+        null=True,
+        blank=True,
+        db_column='icon_path',
+        help_text="예: images/flood_icon.png (static 폴더 기준 상대경로)"
+    )
+
+    icon_file_name = models.CharField(
+        max_length=500,
+        verbose_name="이미지 파일명",
+        null=True,
+        blank=True,
+        db_column='icon_file_name',
+        help_text="예: flood_icon.png (static 폴더 기준 상대경로)"
+    )
     
     class Meta:
         db_table = 'disaster_videos'
@@ -239,3 +257,30 @@ class DisasterVideo(models.Model):
         if video_id:
             return f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
         return None
+
+    @property
+    def automatic_icon_path(self):
+        """[2026-01-09 추가] 카테고리별 아이콘 자동 매핑 (DB 입력 불필요)"""
+        # 한글 카테고리 -> 영문 파일명 매핑
+        ICON_MAP = {
+            '지진': 'earthquake_icon.png',
+            '홍수': 'flood_icon.png',
+            '산사태': 'landslide_icon.png',
+            '호우': 'rain_icon.png',
+            '해일': 'tsunami_icon.png',
+            '태풍': 'typhoon_icon.png',
+            '화산재': 'ash_icon.png',
+            '화산폭발': 'eruption_icon.png',
+            '댐붕괴': 'dam_icon.png',
+            '화재': 'fire_icon.png',
+            '폭발': 'explosion_icon.png',
+            '원전사고': 'nuclear_icon.png',
+            '산불': 'forest_fire_icon.png',
+        }
+        
+        filename = ICON_MAP.get(self.disaster_kind)
+        if filename:
+            return f"images/category_icon/{filename}"
+        
+        # 매핑된 게 없으면 DB에 저장된 icon_path 사용 (Fallback)
+        return self.icon_path
