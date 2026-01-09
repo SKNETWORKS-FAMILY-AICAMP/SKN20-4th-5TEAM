@@ -741,31 +741,71 @@ def create_langgraph_app(vectorstore):
             rewritten = query_rewrite_chain.invoke({"original_query": query})
             print(f"[search_disaster_guideline] 재정의: {query} → {rewritten}")
 
-            if guideline_hybrid is None:
-                return {
-                    "text": "가이드라인 검색 시스템이 초기화되지 않았습니다.",
-                    "structured_data": None,
+            # ⭐ 재난 키워드 매핑 (사용자 입력 → VectorDB 저장명)
+            disaster_keyword_mapping = {
+                "쓰나미": "지진해일",
+                "지진해일": "지진해일",
+                "호우": "홍수",
+                "홍수": "홍수",
+                "태풍": "태풍",
+                "지진": "지진",
+                "화재": "화재",
+                "폭발": "폭발",
+                "산사태": "산사태",
+                "화산": "화산재",
+                "화산재": "화산재",
+                "방사능": "방사능",
+                "가스": "가스",
+                "붕괴": "댐붕괴",
+                "댐붕괴": "댐붕괴",
+                "산불": "산불",
+            }
+
+            # 사용자 입력에서 재난 키워드 추출
+            detected_keyword = None
+            detected_disaster = None
+
+            for keyword, mapped_name in disaster_keyword_mapping.items():
+                if keyword in query.lower():
+                    detected_keyword = keyword  # 사용자 입력 원본
+                    detected_disaster = mapped_name  # VectorDB 검색용
+                    break
+
+            if not detected_disaster:
+                # 매핑 실패 시 재정의된 쿼리 그대로 사용
+                detected_disaster = rewritten
+                detected_keyword = query
+
+            print(f"[search_disaster_guideline] 검색 키워드: '{detected_disaster}' (입력: '{detected_keyword}')")
+
+            # ⭐ VectorDB에서 keyword 필드로 정확히 필터링 ($and 연산자 사용)
+            all_data = vectorstore.get(
+                where={
+                    "$and": [  # 논리 연산자로 감싸기
+                        {"type": "disaster_guideline"},
+                        {"keyword": detected_disaster}
+                    ]
                 }
+            )
 
-            # 하이브리드 검색
-            results = guideline_hybrid.invoke(rewritten)
-
-            if not results:
+            if not all_data or not all_data.get("documents"):
                 return {
-                    "text": f"'{query}' 관련 행동요령을 찾을 수 없습니다.",
+                    "text": f"'{detected_keyword}' 관련 행동요령을 찾을 수 없습니다.",
                     "structured_data": None,
                 }
 
             # 상위 3개 결과 통합
-            combined = "\n\n".join([doc.page_content for doc in results[:3]])
+            combined = "\n\n".join(all_data["documents"][:3])
 
             return {
-                "text": f"🚨 **{query} 행동요령**\n\n{combined}",
-                "structured_data": None,  # 행동요령은 위치 정보 없음
+                "text": f"🚨 **{detected_keyword} 행동요령**\n\n{combined}",
+                "structured_data": None,
             }
 
         except Exception as e:
             print(f"[ERROR] search_disaster_guideline: {e}")
+            import traceback
+            traceback.print_exc()
             return {"text": f"검색 중 오류 발생: {str(e)}", "structured_data": None}
 
     @tool
@@ -1108,18 +1148,35 @@ def create_langgraph_app(vectorstore):
         try:
             print(f"[search_location_with_disaster] 복합 질문 처리: {query}")
 
-            # 1단계: 재난 유형 감지
-            disaster_keywords = [
-                "지진", "홍수", "태풍", "화재", "폭발", "산사태", 
-                "쓰나미", "화산", "방사능", "가스", "붕괴", "테러"
-            ]
+           # 1단계: 재난 유형 감지
+            # 키워드 매핑: 사용자 입력 → VectorDB 저장명
+            disaster_keyword_mapping = {
+                "쓰나미": "지진해일",
+                "지진해일": "지진해일",
+                "호우": "홍수",
+                "홍수": "홍수",
+                "태풍": "태풍",
+                "지진": "지진",
+                "화재": "화재",
+                "폭발": "폭발",
+                "산사태": "산사태",
+                "화산": "화산재",
+                "화산재": "화산재",
+                "방사능": "방사능",
+                "가스": "가스",
+                "붕괴": "댐붕괴",
+                "댐붕괴": "댐붕괴",
+                "산불": "산불",
+            }
 
             detected_disaster = None
+            detected_keyword = None  # 사용자가 입력한 키워드
             location_query = query
 
-            for keyword in disaster_keywords:
+            for keyword, mapped_name in disaster_keyword_mapping.items():
                 if keyword in query:
-                    detected_disaster = keyword
+                    detected_keyword = keyword  # 원본 키워드
+                    detected_disaster = mapped_name  # VectorDB 검색용
                     location_query = location_query.replace(keyword, "")
                     break
 
@@ -1131,11 +1188,12 @@ def create_langgraph_app(vectorstore):
             
             if not detected_disaster:
                 return {
-                    "text": "재난 유형을 파악할 수 없습니다. 예: '설악산 산사태', '강남역 지진'",
+                    "text": "재난 유형을 파악할 수 없습니다. 예: '설악산 산사태', '강남역 지진', '양양 쓰나미'",
                     "structured_data": None,
                 }
 
-            print(f"[search_location_with_disaster] 위치: '{location_query}', 재난: '{detected_disaster}'")
+            print(f"[search_location_with_disaster] 위치: '{location_query}', 재난: '{detected_disaster}' (입력: '{detected_keyword}')")
+
 
             # 2단계: 질문 재정의로 위치 유형 판단 (search_shelter_by_location과 동일)
             rewritten = query_rewrite_chain.invoke({"original_query": location_query})
@@ -1259,9 +1317,11 @@ def create_langgraph_app(vectorstore):
                     print(f"[search_location_with_disaster] 가이드라인 검색 실패: {e}")
                     guideline_text = f"{detected_disaster} 관련 행동요령을 찾을 수 없습니다."
 
-            # 6단계: 통합 결과 생성
+            ## 6단계: 통합 결과 생성
             location_text = "지역" if location_type == "region" else "위치"
-            result = f"""🚨 **{place_name} {location_text} 기준 {detected_disaster} 발생 시 대응 가이드**
+            # 사용자가 입력한 키워드를 표시 (더 자연스러운 응답)
+            display_disaster = detected_keyword if detected_keyword else detected_disaster
+            result = f"""🚨 **{place_name} {location_text} 기준 {display_disaster} 발생 시 대응 가이드**
 
     📍 **가장 가까운 대피소 {len(top_3)}곳**
 
@@ -1274,7 +1334,8 @@ def create_langgraph_app(vectorstore):
 
             result += f"""
 
-    🚨 **{detected_disaster} 행동요령**
+    🚨 **{display_disaster} 행동요령**
+
 
     {guideline_text}
 
