@@ -114,22 +114,24 @@
                         </div>
                     </div>
 
-                    <!-- [2026-01-09 수정] 하단 광고판 영역: 공백 제거를 위해 블러 배경 효과 적용 -->
-                    <div class="flex-shrink-0 bg-gray-50 border-t border-gray-100 h-[180px] relative overflow-hidden">
-                        <div class="absolute top-2 left-3 z-[20]">
+                    <!-- [2026-01-09 수정] 광고판 영역을 원래 위치(길찾기 상세 안내 하단)로 복원 -->
+                    <div class="flex-shrink-0 bg-gray-50 border-t border-gray-100 h-[180px] relative overflow-hidden"
+                        id="ad-container">
+                        <div class="absolute top-2 left-3 z-[100]">
                             <span
                                 class="text-[9px] bg-black/10 text-gray-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">AD</span>
                         </div>
 
-                        <div class="w-full h-full">
+                        <div class="w-full h-full relative" id="ad-wrapper">
                             {% for ad in advertisements %}
-                            <div class="ad-slide absolute inset-0 transition-opacity duration-1000 {% if not forloop.first %}opacity-0 pointer-events-none{% else %}opacity-100{% endif %} flex items-center justify-center"
-                                data-index="{{ forloop.counter0 }}">
+                            <div class="ad-slide absolute inset-0 flex items-center justify-center transition-opacity duration-1000"
+                                style="opacity: {% if forloop.first %}1{% else %}0{% endif %}; pointer-events: {% if forloop.first %}auto{% else %}none{% endif %}; z-index: {% if forloop.first %}10{% else %}0{% endif %}; display: flex;"
+                                data-index="{{ forloop.counter0 }}" data-name="{{ ad.ad_kind }}">
                                 {% if ad.image_filename %}
                                 <img src="{% static 'images/ad_images/' %}{{ ad.image_filename }}"
-                                    class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110">
+                                    class="absolute inset-0 w-full h-full object-cover blur-3xl opacity-30 scale-125">
                                 <img src="{% static 'images/ad_images/' %}{{ ad.image_filename }}"
-                                    alt="{{ ad.ad_kind }}" class="relative z-[10] w-full h-full object-contain">
+                                    alt="{{ ad.ad_kind }}" class="relative z-[10] w-full h-full object-contain p-2">
                                 {% endif %}
                             </div>
                             {% empty %}
@@ -137,6 +139,11 @@
                                 <p class="text-xl font-bold text-gray-300">안전한 하루 되세요!</p>
                             </div>
                             {% endfor %}
+                            <!-- 하단 상태 표시줄 (백그라운드에서 로직이 도는 것을 눈으로 확인용) -->
+                            <div id="ad-rotation-status"
+                                class="absolute bottom-1 right-2 text-[9px] bg-black/20 text-white/70 px-1.5 py-0.5 rounded-full z-[120] pointer-events-none font-mono">
+                                연동 대기 중...
+                            </div>
                         </div>
                     </div>
                 </div>

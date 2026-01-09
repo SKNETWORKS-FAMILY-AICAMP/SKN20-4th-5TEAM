@@ -14,3 +14,8 @@
 /frontend/main/migrations/
 /frontend/staticfiles/
 frontend/main/management/commands/__pycache__/import_csv.cpython-311.pyc
+
+# 2025.01.09 추가
+.DS_Store
+.AppleDouble
+.LSOverride

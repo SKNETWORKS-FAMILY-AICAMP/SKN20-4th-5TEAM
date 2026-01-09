@@ -1283,27 +1283,22 @@ function animateMovingArrow(path) {
  * 광고 로테이션 (2026-01-09 수정)
  * ═══════════════════════════════════════════════════════════════════ */
 function initAdRotation() {
+    console.log('[AdRotation] 시스템 가동 (2026-01-09) - 초경량 엔진 v3');
     const slides = document.querySelectorAll('.ad-slide');
+    const statusEl = document.getElementById('ad-rotation-status');
 
     if (!slides || slides.length === 0) {
-        console.error('[AdRotation] 오류: 광고 슬라이드(.ad-slide)를 찾을 수 없습니다.');
+        console.error('[AdRotation] 슬라이드를 찾을 수 없습니다.');
+        if (statusEl) statusEl.innerText = '슬라이드 없음';
         return;
     }
 
-    if (slides.length === 1) {
-        console.log('[AdRotation] 정보: 슬라이드가 1개뿐이라 전환을 시작하지 않습니다.');
-        // 슬라이드가 1개일 때는 보이게만 설정
-        slides[0].style.opacity = '1';
-        slides[0].style.zIndex = '10';
-        slides[0].style.display = 'flex';
-        return;
-    }
+    const count = slides.length;
+    let currentIdx = 0;
 
-    console.log(`[AdRotation] 성공: ${slides.length}개의 광고를 감지했습니다. 로테이션을 시작합니다.`);
-    let idx = 0;
-
-    const rotate = () => {
+    const updateDisplay = (idx) => {
         slides.forEach((slide, i) => {
+            // JS로 트랜지션 강제 부여
             slide.style.transition = 'opacity 1s ease-in-out';
             if (i === idx) {
                 slide.style.opacity = '1';
@@ -1316,15 +1311,27 @@ function initAdRotation() {
             }
         });
 
-        console.log(`[AdRotation] 전환 실행됨: ${idx + 1}/${slides.length}`);
-        idx = (idx + 1) % slides.length;
-
-        // 5초 후 다음 전환
-        setTimeout(rotate, 5000);
+        // 시각적 하트비트 업데이트 (광고 종류와 시간 표시)
+        if (statusEl) {
+            const currentName = slides[idx].getAttribute('data-name') || '광고';
+            statusEl.innerText = `● ${idx + 1}/${count} ${currentName}`;
+            // 반짝이는 효과
+            statusEl.style.opacity = '1';
+            setTimeout(() => { statusEl.style.opacity = '0.7'; }, 500);
+        }
+        console.log(`[AdRotation] 광고 전환: ${idx + 1}/${count} (${slides[idx].getAttribute('data-name')})`);
     };
 
-    // 첫 실행
-    rotate();
+    // 초기 상태 강제 설정
+    updateDisplay(0);
+
+    // 2개 이상일 때만 인터벌 가동 (5초)
+    if (count > 1) {
+        setInterval(() => {
+            currentIdx = (currentIdx + 1) % count;
+            updateDisplay(currentIdx);
+        }, 5000);
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1356,4 +1363,5 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="text-red-600 font-bold">⚠️ 서버 연결 실패. FastAPI 서버를 실행해주세요.</span>
         `;
         }
-    });
+    })();
+});
