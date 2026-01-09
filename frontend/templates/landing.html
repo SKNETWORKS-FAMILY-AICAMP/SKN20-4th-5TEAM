@@ -13,6 +13,48 @@
         body {
             font-family: 'Noto Sans KR', sans-serif;
         }
+
+        .waving-hand {
+            animation-name: wave-animation;
+            animation-duration: 2.5s;
+            animation-iteration-count: infinite;
+            transform-origin: 70% 70%;
+            display: inline-block;
+        }
+
+        @keyframes wave-animation {
+            0% {
+                transform: rotate(0.0deg)
+            }
+
+            10% {
+                transform: rotate(14.0deg)
+            }
+
+            20% {
+                transform: rotate(-8.0deg)
+            }
+
+            30% {
+                transform: rotate(14.0deg)
+            }
+
+            40% {
+                transform: rotate(-4.0deg)
+            }
+
+            50% {
+                transform: rotate(10.0deg)
+            }
+
+            60% {
+                transform: rotate(0.0deg)
+            }
+
+            100% {
+                transform: rotate(0.0deg)
+            }
+        }
     </style>
 </head>
 
@@ -32,11 +74,10 @@
 
         <h1
             class="text-2xl md:text-3xl lg:text-4xl font-black mb-6 tracking-tight leading-tight drop-shadow-sm break-keep text-left max-w-lg">
-            안녕! 나는 대피 도우미야 👋
+            안녕! 나는 대피 도우미야 <span class="waving-hand">👋</span>
         </h1>
 
-        <div
-            class="text-base md:text-lg text-gray-900 mb-10 max-w-lg leading-relaxed font-medium space-y-6 text-left">
+        <div class="text-base md:text-lg text-gray-900 mb-10 max-w-lg leading-relaxed font-medium space-y-6 text-left">
 
             <ul class="space-y-3 pl-0">
                 <li class="flex items-start gap-2">
@@ -52,13 +93,13 @@
                     <span>지도와 로드뷰로 이동 경로를 한눈에!</span>
                 </li>
                 <li class="flex items-start gap-2">
-                    <span>🧑🏻‍🚒</span>
+                    <span>👩‍🚒</span>
                     <span>지진, 화재, 폭우 같은 재난이 발생했을 때 <br> 꼭 알아야 할 대피요령도 차근차근 알려줄게.</span>
                 </li>
-                
+
                 <li class="flex items-start gap-2">
                     <span>위급할수록 더 침착하게!
-                    나랑 같이 안전한 곳으로 가자🪽</span>
+                        나랑 같이 안전한 곳으로 가자🙏</span>
                 </li>
             </ul>
         </div>
