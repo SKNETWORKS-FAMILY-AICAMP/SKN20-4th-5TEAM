@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKN 재난안전 챗봇</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="w-full h-screen overflow-hidden flex flex-col md:flex-row">
+
+    <!-- Left Side: Video (50%) -->
+    <div class="relative w-full md:w-1/2 h-1/2 md:h-full bg-black">
+        <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover">
+            <source src="{% static 'images/image_bot.mp4' %}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+    </div>
+
+    <!-- Right Side: Content (50%) -->
+    <div
+        class="relative w-full md:w-1/2 h-1/2 md:h-full bg-[#ffbf2d] flex flex-col items-center justify-center p-8 text-center text-gray-900 z-10">
+
+        <h1
+            class="text-3xl md:text-4xl lg:text-5xl font-black mb-6 tracking-tight leading-tight drop-shadow-sm break-keep">
+            안녕! 나는 너의 안전을 지켜주는<br>대피 도우미야 👋
+        </h1>
+
+        <div
+            class="text-base md:text-lg text-gray-900 mb-10 max-w-lg leading-relaxed font-medium space-y-4 text-left mx-auto">
+            <p class="text-center font-bold text-xl">
+                갑작스러운 재난 상황에서도<br>당황하지 않도록 내가 도와줄게!
+            </p>
+
+            <ul class="space-y-2 pl-2">
+                <li>📍 지금 있는 현위치를 바로 찾고</li>
+                <li>🏃‍♀️ 가장 가까운 대피소를 안내해줄 수 있어</li>
+                <li>🗺️ 지도와 로드뷰로 이동 경로를 한눈에!</li>
+            </ul>
+
+            <p class="pt-2 text-sm text-gray-800 break-keep">
+                지진, 화재, 폭우 같은 재난이 발생했을 때<br>
+                꼭 알아야 할 대피요령도 차근차근 알려줄게.
+            </p>
+
+            <p class="text-center font-bold text-lg pt-2">
+                걱정하지 마!<br>지금부터는 내가 옆에서 함께할게 🙂
+            </p>
+        </div>
+
+        <a href="{% url 'main:shelter_map' %}"
+            class="group relative inline-flex items-center justify-center px-12 py-5 text-lg font-black text-[#ffbf2d] transition-all duration-300 bg-gray-900 rounded-full hover:bg-black hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-gray-800">
+            <span>대피소 찾기 시작</span>
+            <svg class="w-5 h-5 ml-3 -mr-1 transition-transform duration-300 group-hover:translate-x-1" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6">
+                </path>
+            </svg>
+        </a>
+    </div>
+
+</body>
+
+</html>
