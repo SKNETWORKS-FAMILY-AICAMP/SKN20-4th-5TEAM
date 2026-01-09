@@ -28,33 +28,39 @@
 
     <!-- Right Side: Content (50%) -->
     <div
-        class="relative w-full md:w-1/2 h-1/2 md:h-full bg-[#ffbf2d] flex flex-col items-center justify-center p-8 text-center text-gray-900 z-10">
+        class="relative w-full md:w-1/2 h-1/2 md:h-full bg-[#ffbf2d] flex flex-col items-start justify-center p-8 pl-12 md:pl-16 lg:pl-20 text-gray-900 z-10">
 
         <h1
-            class="text-3xl md:text-4xl lg:text-5xl font-black mb-6 tracking-tight leading-tight drop-shadow-sm break-keep">
-            안녕! 나는 너의 안전을 지켜주는<br>대피 도우미야 👋
+            class="text-2xl md:text-3xl lg:text-4xl font-black mb-6 tracking-tight leading-tight drop-shadow-sm break-keep text-left max-w-lg">
+            안녕! 나는 대피 도우미야 👋
         </h1>
 
         <div
-            class="text-base md:text-lg text-gray-900 mb-10 max-w-lg leading-relaxed font-medium space-y-4 text-left mx-auto">
-            <p class="text-center font-bold text-xl">
-                갑작스러운 재난 상황에서도<br>당황하지 않도록 내가 도와줄게!
-            </p>
+            class="text-base md:text-lg text-gray-900 mb-10 max-w-lg leading-relaxed font-medium space-y-6 text-left">
 
-            <ul class="space-y-2 pl-2">
-                <li>📍 지금 있는 현위치를 바로 찾고</li>
-                <li>🏃‍♀️ 가장 가까운 대피소를 안내해줄 수 있어</li>
-                <li>🗺️ 지도와 로드뷰로 이동 경로를 한눈에!</li>
+            <ul class="space-y-3 pl-0">
+                <li class="flex items-start gap-2">
+                    <span>📍</span>
+                    <span>지금 있는 현위치를 바로 찾고</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span>🏃‍♀️</span>
+                    <span>가장 가까운 대피소를 안내해줄 수 있어</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span>🗺️</span>
+                    <span>지도와 로드뷰로 이동 경로를 한눈에!</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span>🧑🏻‍🚒</span>
+                    <span>지진, 화재, 폭우 같은 재난이 발생했을 때 <br> 꼭 알아야 할 대피요령도 차근차근 알려줄게.</span>
+                </li>
+                
+                <li class="flex items-start gap-2">
+                    <span>위급할수록 더 침착하게!
+                    나랑 같이 안전한 곳으로 가자🪽</span>
+                </li>
             </ul>
-
-            <p class="pt-2 text-sm text-gray-800 break-keep">
-                지진, 화재, 폭우 같은 재난이 발생했을 때<br>
-                꼭 알아야 할 대피요령도 차근차근 알려줄게.
-            </p>
-
-            <p class="text-center font-bold text-lg pt-2">
-                걱정하지 마!<br>지금부터는 내가 옆에서 함께할게 🙂
-            </p>
         </div>
 
         <a href="{% url 'main:shelter_map' %}"
