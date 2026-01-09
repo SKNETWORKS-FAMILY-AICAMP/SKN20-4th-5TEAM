@@ -114,17 +114,29 @@
                         </div>
                     </div>
 
-                    <!-- [2026-01-07 추가] 하단 광고판 영역 -->
-                    <div
-                        class="flex-shrink-0 p-4 bg-gradient-to-r from-gray-900 to-gray-800 text-white border-t border-gray-700">
-                        <div class="flex items-center justify-between mb-1">
+                    <!-- [2026-01-09 수정] 하단 광고판 영역: 공백 제거를 위해 블러 배경 효과 적용 -->
+                    <div class="flex-shrink-0 bg-gray-50 border-t border-gray-100 h-[180px] relative overflow-hidden">
+                        <div class="absolute top-2 left-3 z-[20]">
                             <span
-                                class="text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">AD</span>
-                            <span
-                                class="text-[10px] text-gray-400 opacity-70 italic font-medium tracking-tight">Advertisement</span>
+                                class="text-[9px] bg-black/10 text-gray-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">AD</span>
                         </div>
-                        <div class="py-2 px-1 text-center">
-                            <p class="text-2xl font-black text-yellow-400 tracking-tight drop-shadow-sm">MCK 전담친구 구함</p>
+
+                        <div class="w-full h-full">
+                            {% for ad in advertisements %}
+                            <div class="ad-slide absolute inset-0 transition-opacity duration-1000 {% if not forloop.first %}opacity-0 pointer-events-none{% else %}opacity-100{% endif %} flex items-center justify-center"
+                                data-index="{{ forloop.counter0 }}">
+                                {% if ad.image_filename %}
+                                <img src="{% static 'images/ad_images/' %}{{ ad.image_filename }}"
+                                    class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110">
+                                <img src="{% static 'images/ad_images/' %}{{ ad.image_filename }}"
+                                    alt="{{ ad.ad_kind }}" class="relative z-[10] w-full h-full object-contain">
+                                {% endif %}
+                            </div>
+                            {% empty %}
+                            <div class="flex items-center justify-center h-full">
+                                <p class="text-xl font-bold text-gray-300">안전한 하루 되세요!</p>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>

@@ -1280,15 +1280,68 @@ function animateMovingArrow(path) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+ * 광고 로테이션 (2026-01-09 수정)
+ * ═══════════════════════════════════════════════════════════════════ */
+function initAdRotation() {
+    const slides = document.querySelectorAll('.ad-slide');
+
+    if (!slides || slides.length === 0) {
+        console.error('[AdRotation] 오류: 광고 슬라이드(.ad-slide)를 찾을 수 없습니다.');
+        return;
+    }
+
+    if (slides.length === 1) {
+        console.log('[AdRotation] 정보: 슬라이드가 1개뿐이라 전환을 시작하지 않습니다.');
+        // 슬라이드가 1개일 때는 보이게만 설정
+        slides[0].style.opacity = '1';
+        slides[0].style.zIndex = '10';
+        slides[0].style.display = 'flex';
+        return;
+    }
+
+    console.log(`[AdRotation] 성공: ${slides.length}개의 광고를 감지했습니다. 로테이션을 시작합니다.`);
+    let idx = 0;
+
+    const rotate = () => {
+        slides.forEach((slide, i) => {
+            slide.style.transition = 'opacity 1s ease-in-out';
+            if (i === idx) {
+                slide.style.opacity = '1';
+                slide.style.zIndex = '10';
+                slide.style.pointerEvents = 'auto';
+            } else {
+                slide.style.opacity = '0';
+                slide.style.zIndex = '0';
+                slide.style.pointerEvents = 'none';
+            }
+        });
+
+        console.log(`[AdRotation] 전환 실행됨: ${idx + 1}/${slides.length}`);
+        idx = (idx + 1) % slides.length;
+
+        // 5초 후 다음 전환
+        setTimeout(rotate, 5000);
+    };
+
+    // 첫 실행
+    rotate();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
  * 초기화
  * ═══════════════════════════════════════════════════════════════════ */
 
-document.addEventListener("DOMContentLoaded", async () => {
-    await checkApiStatus();
-    initializeMap();
+document.addEventListener("DOMContentLoaded", () => {
+    // 광고 로테이션은 그 무엇보다 먼저 실행 (네트워크 상태와 무관)
+    initAdRotation();
 
-    if (API_AVAILABLE) {
-        initialMessageEl.innerHTML = `
+    // 나머지 비동기 초기화는 별도로 진행
+    (async () => {
+        await checkApiStatus();
+        initializeMap();
+
+        if (API_AVAILABLE) {
+            initialMessageEl.innerHTML = `
             <span class="text-black-600 font-normal">저는 </span>
             <span class="text-red-600 font-bold text-lg">재난안전 챗봇</span>
             <span class="text-black-600 font-normal">입니다 🤖</span><br>
@@ -1297,10 +1350,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span class="text-blue-700 font-bold">"현위치"</span>
             <span class="text-black-700 font-normal">로 검색해 보세요.</span>
         `;
-        setControlsDisabled(false);
-    } else {
-        initialMessageEl.innerHTML = `
+            setControlsDisabled(false);
+        } else {
+            initialMessageEl.innerHTML = `
             <span class="text-red-600 font-bold">⚠️ 서버 연결 실패. FastAPI 서버를 실행해주세요.</span>
         `;
-    }
-});
+        }
+    });

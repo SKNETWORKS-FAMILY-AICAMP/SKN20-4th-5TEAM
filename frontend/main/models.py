@@ -37,6 +37,15 @@ class Advertisement(models.Model):
         db_column='Image_Path',
         help_text="예: C:\\Users\\ansck\\Desktop\\Project\\4rh-project\\data\\ad_images\\distermind.jpg"
     )
+    
+    @property
+    def image_filename(self):
+        """[2026-01-09 수정] 절대 경로에서 파일명 추출"""
+        if self.image_path:
+            import os
+            return os.path.basename(self.image_path)
+        return ""
+
     image_file = models.ImageField(
         upload_to='advertisements/',
         blank=True,

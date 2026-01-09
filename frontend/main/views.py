@@ -1,14 +1,16 @@
 from django.shortcuts import render
 from django.conf import settings
-from .models import DisasterVideo
+from .models import DisasterVideo, Advertisement
 
 def index(request):
     """메인 페이지 - 대피소 챗봇"""
     videos = DisasterVideo.objects.filter(is_active=True)
+    # [2026-01-09 수정] 활성화된 광고 목록 추가
+    ads = Advertisement.objects.filter(is_active=True).order_by('display_order')
     context = {
         'fastapi_url': settings.FASTAPI_BASE_URL,
-        # 'naver_map_client_id': settings.NAVER_MAP_CLIENT_ID, # 2026-01-06: 카카오 지도로 전환
         'kakao_map_api_key': settings.KAKAO_MAP_API_KEY,
-        'disaster_videos': videos,  # 이 이름으로 템플릿에 전달됩니다.
+        'disaster_videos': videos,
+        'advertisements': ads,
     }
     return render(request, 'shelter.html', context)
