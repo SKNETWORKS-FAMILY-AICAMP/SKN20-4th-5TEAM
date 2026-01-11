@@ -1,0 +1,159 @@
+[
+  {
+    "id": 1,
+    "query": "지진 났을 때 어떻게 해?",
+    "expected_disaster_type": "earthquake",
+    "category": "basic",
+    "difficulty": "easy"
+  },
+  {
+    "id": 2,
+    "query": "화재 나면?",
+    "expected_disaster_type": "fire",
+    "category": "basic",
+    "difficulty": "easy"
+  },
+  {
+    "id": 3,
+    "query": "산사태 대피",
+    "expected_disaster_type": "landslide",
+    "category": "basic",
+    "difficulty": "easy"
+  },
+  {
+    "id": 4,
+    "query": "쓰나미 났을 때",
+    "expected_disaster_type": "Tsunami",
+    "category": "basic",
+    "difficulty": "easy"
+  },
+
+  {
+    "id": 5,
+    "query": "홍수가 나면 어떻게 대피해야 해?",
+    "expected_disaster_type": "flood",
+    "category": "basic",
+    "difficulty": "easy"
+  },
+  {
+    "id": 6,
+    "query": "태풍 왔을 때 조심해야 할 것들은?",
+    "expected_disaster_type": "typoon",
+    "category": "basic",
+    "difficulty": "easy"
+  },
+
+  {
+    "id": 7,
+    "query": "건물이 흔들리고 있어. 무서워",
+    "expected_disaster_type": "earthquake",
+    "category": "casual",
+    "difficulty": "medium",
+    "description": "일상적 표현으로 지진 상황 표현"
+  },
+  {
+    "id": 8,
+    "query": "불이야!",
+    "expected_disaster_type": "fire",
+    "category": "casual",
+    "difficulty": "medium",
+    "description": "긴급 상황 표현"
+  },
+  {
+    "id": 9,
+    "query": "화산이 터졌다니까?",
+    "expected_disaster_type": "Volcanic Eruption",
+    "category": "casual",
+    "difficulty": "medium",
+    "description": "뉴스 같은 간접적 표현"
+  },
+
+  {
+    "id": 10,
+    "query": "지진 발생 시 안전한 자세는?",
+    "expected_disaster_type": "earthquake",
+    "category": "action",
+    "difficulty": "medium",
+    "description": "구체적 행동 요령 요청"
+  },
+  {
+    "id": 11,
+    "query": "화재에서 대피하려면 어디로 가야 해?",
+    "expected_disaster_type": "fire",
+    "category": "action",
+    "difficulty": "medium",
+    "description": "피난 장소 관련 질문"
+  },
+  {
+    "id": 12,
+    "query": "산사태가 발생했을 때 피해야 할 장소는?",
+    "expected_disaster_type": "landslide",
+    "category": "action",
+    "difficulty": "medium",
+    "description": "회피 방법 질문"
+  },
+
+  {
+    "id": 13,
+    "query": "지진 발생 원인은?",
+    "expected_disaster_type": "earthquake",
+    "category": "cause",
+    "difficulty": "hard",
+    "description": "원인 설명 요청 - 행동요령과 구분"
+  },
+  {
+    "id": 14,
+    "query": "쓰나미는 왜 발생해?",
+    "expected_disaster_type": "Tsunami",
+    "category": "cause",
+    "difficulty": "hard",
+    "description": "원인 설명 요청"
+  },
+
+  {
+    "id": 15,
+    "query": "강남역 근처에서 지진이 났어",
+    "expected_disaster_type": "earthquake",
+    "category": "location_combined",
+    "difficulty": "hard",
+    "description": "위치 + 재난 정보 - 재난 부분 평가"
+  },
+  {
+    "id": 16,
+    "query": "강남역 근처 화재 났을 때 대피소는?",
+    "expected_disaster_type": "fire",
+    "category": "location_combined",
+    "difficulty": "hard",
+    "description": "위치 + 재난 정보 - 재난 부분 평가"
+  },
+
+  {
+    "id": 17,
+    "query": "산불 대피",
+    "expected_disaster_type": "wildfire",
+    "category": "basic",
+    "difficulty": "easy"
+  },
+  {
+    "id": 18,
+    "query": "가스 누출 어떻게?",
+    "expected_disaster_type": "gas",
+    "category": "basic",
+    "difficulty": "easy"
+  },
+  {
+    "id": 19,
+    "query": "화산재가 많이 나오고 있어",
+    "expected_disaster_type": "volcanic ash",
+    "category": "casual",
+    "difficulty": "medium"
+  },
+
+  {
+    "id": 20,
+    "query": "폭풍우가 불고 있어. 무엇을 해야 하나?",
+    "expected_disaster_type": "storm",
+    "category": "action",
+    "difficulty": "medium"
+  }
+]
