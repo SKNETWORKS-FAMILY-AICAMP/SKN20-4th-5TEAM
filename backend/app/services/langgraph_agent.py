@@ -744,7 +744,7 @@ def create_langgraph_app(vectorstore):
             # ⭐ 재난 키워드 매핑 (사용자 입력 → VectorDB 저장명)
             disaster_keyword_mapping = {
                 "쓰나미": "지진해일",
-                "지진해일": "지진해일",
+                "해일": "지진해일",
                 "호우": "홍수",
                 "홍수": "홍수",
                 "태풍": "태풍",
@@ -1152,7 +1152,7 @@ def create_langgraph_app(vectorstore):
             # 키워드 매핑: 사용자 입력 → VectorDB 저장명
             disaster_keyword_mapping = {
                 "쓰나미": "지진해일",
-                "지진해일": "지진해일",
+                "해일": "지진해일",
                 "호우": "홍수",
                 "홍수": "홍수",
                 "태풍": "태풍",
