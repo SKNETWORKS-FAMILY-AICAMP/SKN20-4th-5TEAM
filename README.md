@@ -105,8 +105,6 @@ SKN20-4TH-5TEAM/
 │   │   ├── main.py                      # API 서버 (포트 8001)
 │   │   ├── core/
 │   │   │   └── config.py                # 환경 설정
-│   │   ├── models/
-│   │   │   └── schemas.py               # Pydantic 모델
 │   │   └── services/                    # 핵심 비즈니스 로직
 │   │       ├── langgraph_agent.py       # LangGraph Agent + Tools
 │   │       ├── data_loaders.py          # CSV/JSON 데이터 로드
@@ -818,7 +816,6 @@ class DisasterVideo(models.Model):
 - [ ] 실시간 재난 알림 Push 연동
 - [ ] 카테고리별 대피소 필터링 (장애인, 유아, 반려동물)
 - [ ] 다국어 지원 (영어, 중국어, 일본어)
-- [x] ~~RAG 평가 지표 적용~~ (LLM 평가자 기반 구현 완료)
 - [ ] 음성 입력/출력 지원
 - [ ] 평가 점수 80점 이상 달성 (현재 75.1점)
 
