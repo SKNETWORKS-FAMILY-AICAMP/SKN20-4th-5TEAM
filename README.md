@@ -4,7 +4,7 @@
 
 <p align="center">
   🚨 <strong>민방위 대피시설 + 재난 행동요령 데이터 기반 Advanced RAG 시스템</strong><br>
-  <sub>SK Networks Family 20기 — 4TH 5TEAM | <b>프론트앤드 중점,,,?뭐라고 쓰나요</b></sub>
+  <sub>SK Networks Family 20기 — 4TH 5TEAM | <b>Frontend 중점 프로젝트</b></sub>
 </p>
 
 <p align="center">
@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white"/>
   <img src="https://img.shields.io/badge/Map-Kakao_Maps-FFCD00?style=for-the-badge&logo=kakao&logoColor=black"/>
   <img src="https://img.shields.io/badge/Route-T_Map-00B4E7?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/AI-LangGraph-1E8C7E?style=for-the-badge&logo=chainlink&logoColor=white"/>
 </p>
 
 ---
@@ -30,6 +31,8 @@
 | **UI/UX** | 기본 UI | **슬라이딩 패널 + 애니메이션 + 봇 아바타** |
 | **의도 분류** | 8개 카테고리 | **8개 + Intent 응답 필드 추가** |
 | **성능 측정** | 없음 | **LangGraph/API 처리 시간 측정** |
+| **평가 시스템** | 없음 | **LLM 기반 행동요령 품질 평가** |
+| **DB 연동** | 없음 | **Django ORM (광고/재난영상 관리)** |
 
 ---
 
@@ -55,6 +58,7 @@
 | **검색** | ![Hybrid Search](https://img.shields.io/badge/Hybrid%20Search-FF6F61.svg?style=flat) Dense (Vector) + Sparse (BM25) Ensemble |
 | **지도 API** | ![Kakao Maps](https://img.shields.io/badge/Kakao%20Maps%20API-FFCD00.svg?style=flat&logo=kakao&logoColor=black) Kakao Maps + Roadview ⭐ 신규<br>![Kakao Local](https://img.shields.io/badge/Kakao%20Local%20API-FFCD00.svg?style=flat&logo=kakao&logoColor=black) 좌표 변환 |
 | **경로 API** | ![T Map](https://img.shields.io/badge/T%20Map%20API-00B4E7.svg?style=flat) 보행자 경로 안내 ⭐ 신규 |
+| **DB** | ![SQLite](https://img.shields.io/badge/SQLite-003B57.svg?style=flat&logo=sqlite&logoColor=white) Django ORM (광고/영상 관리) |
 
 ---
 
@@ -76,6 +80,8 @@
 | **이동 애니메이션** | ❌ | ✅ | 경로 위 🚶 아이콘 이동 |
 | **봇 아바타** | ❌ | ✅ | 말하는 GIF 애니메이션 |
 | **성능 측정** | ❌ | ✅ | LangGraph 실행 시간 출력 |
+| **LLM 평가 시스템** | ❌ | ✅ | GPT-4o 기반 응답 품질 평가 |
+| **광고/영상 DB** | ❌ | ✅ | Django Admin 기반 콘텐츠 관리 |
 
 ---
 
@@ -96,6 +102,10 @@
 │  │ shelter.html │  │ shelter.js   │  │ shelter.css  │  │ views.py         │ │
 │  │ (템플릿)      │  │ (JS 로직)    │  │ (스타일)     │  │ (Django 뷰)      │ │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────────┘ │
+│  ┌──────────────┐  ┌──────────────┐                                         │
+│  │ landing.html │  │ models.py    │  ← 광고/재난영상 DB 모델                 │
+│  │ (랜딩 페이지) │  │ admin.py     │  ← Django Admin 관리                    │
+│  └──────────────┘  └──────────────┘                                         │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                     AJAX 요청 (fetch API)
@@ -154,18 +164,30 @@ SKN20-4TH-5TEAM/
 │   │   └── wsgi.py                      # WSGI 설정
 │   ├── main/
 │   │   ├── views.py                     # 뷰 함수
-│   │   └── urls.py                      # 앱 URL
+│   │   ├── models.py                    # ⭐ 광고/재난영상 DB 모델
+│   │   ├── admin.py                     # ⭐ Django Admin 설정
+│   │   ├── urls.py                      # 앱 URL
+│   │   └── management/commands/         # ⭐ CSV 임포트 커맨드
+│   │       └── import_csv.py
 │   ├── templates/
-│   │   └── shelter.html                 # ⭐ 메인 UI 템플릿
+│   │   ├── shelter.html                 # 메인 UI 템플릿
+│   │   └── landing.html                 # ⭐ 랜딩 페이지
 │   ├── static/
 │   │   ├── css/
-│   │   │   └── shelter.css              # ⭐ 분리된 스타일시트
+│   │   │   └── shelter.css              # 분리된 스타일시트
 │   │   ├── js/
-│   │   │   └── shelter.js               # ⭐ 분리된 JavaScript
+│   │   │   └── shelter.js               # 분리된 JavaScript
 │   │   └── images/
 │   │       ├── bot2.png                 # 봇 아바타
-│   │       └── bot2_talking_v2.gif      # ⭐ 말하는 봇 GIF
+│   │       ├── bot2_talking_v2.gif      # 말하는 봇 GIF
+│   │       ├── category_icon/           # ⭐ 재난 카테고리 아이콘
+│   │       └── ad_images/               # ⭐ 광고 이미지
 │   └── manage.py
+│
+├── 📂 eval/                             # ⭐ 평가 시스템 (신규)
+│   ├── eval.py                          # LLM 기반 평가 스크립트
+│   ├── guideline_test.json              # 테스트 케이스 (20개)
+│   └── guideline_results_llm.json       # 평가 결과
 │
 ├── 📂 data/                             # 데이터 디렉토리
 │   ├── shelter.csv                      # 민방위 대피시설 (17,292개)
@@ -185,6 +207,7 @@ SKN20-4TH-5TEAM/
 │   └── map_sizing_guide.md
 │
 ├── .env                                 # 환경 변수 (API 키)
+├── requirements.txt                     # 통합 의존성
 └── README.md
 ```
 
@@ -305,8 +328,8 @@ SKN20-4TH-5TEAM/
 
 | 파일 | 역할 | 3rd 대비 변경 사항 |
 |------|------|------------------|
-| `backend/app/main.py` | FastAPI 서버, API 엔드포인트 | **포트 8001 분리**, T Map API 추가, 시간 측정 추가 |
-| `backend/app/services/langgraph_agent.py` | LangGraph Agent, 7개 Tools | 키워드 기반 빠른 의도 분류 추가 |
+| `backend/app/main.py` | FastAPI 서버, API 엔드포인트 | **포트 8001 분리**, T Map API 추가, 시간 측정 추가, tool_used 필드 추가 |
+| `backend/app/services/langgraph_agent.py` | LangGraph Agent, 7개 Tools | 키워드 기반 빠른 의도 분류, 재난 키워드 매핑 고도화 |
 | `backend/app/services/data_loaders.py` | CSV/JSON 데이터 로드 | 경로 처리 개선 |
 | `backend/app/services/documents.py` | Document 변환 | 동일 |
 | `backend/app/services/embedding_and_vectordb.py` | 임베딩 + ChromaDB | 동일 |
@@ -315,10 +338,21 @@ SKN20-4TH-5TEAM/
 
 | 파일 | 역할 | 3rd 대비 변경 사항 |
 |------|------|------------------|
-| `frontend/templates/shelter.html` | 메인 UI 템플릿 | **Django 템플릿 전환**, Kakao Maps, 슬라이딩 패널 |
-| `frontend/static/js/shelter.js` | 지도/채팅 JavaScript | **Naver→Kakao 전환**, T Map 경로, 이동 애니메이션 |
+| `frontend/templates/shelter.html` | 메인 UI 템플릿 | **Django 템플릿 전환**, Kakao Maps, 슬라이딩 패널, 영상 오버레이 |
+| `frontend/templates/landing.html` | 랜딩 페이지 | **신규** (프로젝트 소개 + 진입점) |
+| `frontend/static/js/shelter.js` | 지도/채팅 JavaScript | **Naver→Kakao 전환**, T Map 경로, 이동 애니메이션, 영상 모드 |
 | `frontend/static/css/shelter.css` | 스타일시트 | **분리**, 애니메이션 keyframes 추가 |
-| `frontend/main/views.py` | Django 뷰 | **신규** (템플릿 렌더링 + API 키 전달) |
+| `frontend/main/views.py` | Django 뷰 | **신규** (템플릿 렌더링 + API 키 전달 + DB 데이터) |
+| `frontend/main/models.py` | DB 모델 | **신규** (Advertisement, DisasterVideo) |
+| `frontend/main/admin.py` | Django Admin | **신규** (광고/영상 관리 인터페이스) |
+
+### 평가 시스템 파일 (신규)
+
+| 파일 | 역할 | 설명 |
+|------|------|------|
+| `eval/eval.py` | LLM 평가 스크립트 | GPT-4o 기반 응답 품질 평가 |
+| `eval/guideline_test.json` | 테스트 케이스 | 20개 재난 시나리오 |
+| `eval/guideline_results_llm.json` | 평가 결과 | 상세 점수 및 피드백 |
 
 ---
 
@@ -329,13 +363,18 @@ SKN20-4TH-5TEAM/
 ```bash
 OPENAI_API_KEY=your_openai_api_key
 KAKAO_REST_API_KEY=your_kakao_rest_api_key
-KAKAO_MAP_API_KEY=your_kakao_map_api_key
+KAKAO_JS_API_KEY=your_kakao_js_api_key
 TMAP_API_KEY=your_tmap_api_key
+DJANGO_SECRET_KEY=your_django_secret_key
 ```
 
-### 2️⃣ 패키지 설치(규리님docker랑 같이 생각해야할듯..?)
+### 2️⃣ 패키지 설치
 
 ```bash
+# 통합 설치 (루트 디렉토리에서)
+pip install -r requirements.txt
+
+# 또는 개별 설치
 # 백엔드
 pip install -r backend/requirements.txt
 
@@ -345,7 +384,7 @@ pip install -r frontend/requirements.txt
 
 ### 3️⃣ VectorDB (ChromaDB)
 
-> ✅ **이미 존재하는 `chroma_db/` 폴더 사용 **
+> ✅ **이미 존재하는 `chroma_db/` 폴더 사용**
 
 ```
 SKN20-4TH-5TEAM/
@@ -361,7 +400,22 @@ SKN20-4TH-5TEAM/
 | **임베딩 모델** | OpenAI `text-embedding-3-small` |
 | **검색 방식** | Hybrid (Vector 60-70% + BM25 30-40%) |
 
-### 4️⃣ 서버 실행
+### 4️⃣ Django 초기화 (최초 1회)
+
+```bash
+cd frontend
+
+# DB 마이그레이션
+python manage.py migrate
+
+# 관리자 계정 생성
+python manage.py createsuperuser
+
+# 광고/영상 데이터 임포트 (선택)
+python manage.py import_csv --ads ../data/ads.csv --videos ../data/videos.csv
+```
+
+### 5️⃣ 서버 실행
 
 ```bash
 # 터미널 1: Backend (FastAPI)
@@ -373,9 +427,11 @@ cd frontend
 python manage.py runserver 0.0.0.0:8000
 ```
 
-### 5️⃣ 접속
+### 6️⃣ 접속
 
-- **Frontend**: http://localhost:8000
+- **랜딩 페이지**: http://localhost:8000
+- **챗봇 메인**: http://localhost:8000/map/
+- **Django Admin**: http://localhost:8000/admin/
 - **Backend API Docs**: http://localhost:8001/docs
 
 ---
@@ -409,7 +465,8 @@ python manage.py runserver 0.0.0.0:8000
   ],
   "total_count": 3,
   "message": "🚨 강남역 근처 지진 발생 시 대응 가이드\n\n📍 가장 가까운 대피소 3곳\n...",
-  "intent": "hybrid_location_disaster"  // ⭐ 4th에서 추가
+  "intent": "hybrid_location_disaster",
+  "tool_used": "search_location_with_disaster"
 }
 ```
 
@@ -417,7 +474,7 @@ python manage.py runserver 0.0.0.0:8000
 
 GPS 좌표 기반 가장 가까운 대피소 검색
 
-### `GET /api/directions` ⭐ 신규 (T Map)
+### `GET /api/directions` ⭐ T Map 보행자 경로
 
 **Query Parameters:**
 - `origin`: 출발지 좌표 (lon,lat)
@@ -434,6 +491,7 @@ GPS 좌표 기반 가장 가까운 대피소 검색
 | 기능 | 설명 | 구현 위치 |
 |------|------|----------|
 | **반응형 2분할 레이아웃** | 지도(7) : 채팅(3) 비율의 Flexbox 구조 | `shelter.html` |
+| **랜딩 페이지** | 프로젝트 소개 + 챗봇 진입점 | `landing.html` |
 | **헤더 영역** | 타이틀 + 사이렌 아이콘 + LLM 상태 배지 | `shelter.html` |
 | **지도 영역** | Kakao Maps 전체화면 지도 | `shelter.html`, `shelter.js` |
 | **로드뷰 영역** | 클릭 시 하단 50% 확장되는 Kakao Roadview | `shelter.html`, `shelter.js` |
@@ -444,18 +502,17 @@ GPS 좌표 기반 가장 가까운 대피소 검색
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  🚨 재난 안전 챗봇                                        [LLM ON] 🤖  │
 ├───────────────────────────────────────────┬─────────────────────────────┤
-│                                           │  🛡️ 대피소 도우미           │
+│  [지진][홍수][산사태][화재]...             │  🛡️ 대피소 도우미           │
 │                                           │  안녕하세요! 대피소를       │
 │              🗺️ 지도 영역                 │  검색해드립니다.            │
 │              (Kakao Maps)                 │                             │
 │                                           │  👤 강남역 근처 대피소      │
-│                                           │                             │
+│  [🛣️ 길찾기 버튼]                         │                             │
 │                                           │  🛡️ 검색 결과입니다...      │
 ├───────────────────────────────────────────┼─────────────────────────────┤
 │              📷 로드뷰 영역               │  [📍 현위치] [🗑️]           │
 │              (클릭 시 확장)               │  [입력창...        ] [전송] │
 └───────────────────────────────────────────┴─────────────────────────────┘
-이미지 여따가 넣읍시다!
 ```
 
 ---
@@ -513,9 +570,8 @@ GPS 좌표 기반 가장 가까운 대피소 검색
 │     → 150m 이동                                     │
 │  ③ 목적지 도착                                      │
 ├─────────────────────────────────────────────────────┤
-│  [AD] MCK 맥북 구함                                 │
+│  [AD] 광고 로테이션 영역 (DB 연동)                  │
 └─────────────────────────────────────────────────────┘
-여따가 광고랑 그 길찾기 이미지 넣읍시다!
 ```
 
 | 기능 | 설명 | 함수/코드 |
@@ -524,7 +580,19 @@ GPS 좌표 기반 가장 가까운 대피소 검색
 | **슬라이드 애니메이션** | `translate-x` 기반 좌측 슬라이드 | `transition-transform` |
 | **요약 정보** | 총 거리(km), 소요 시간(분) | `nav-summary` |
 | **단계별 안내** | 번호 + 설명 + 이동 거리 | `nav-list` |
+| **광고 로테이션** | DB 기반 5초 간격 자동 전환 | `initAdRotation()` |
 | **커스텀 스크롤바** | 초록색 테마 스크롤바 | `.custom-scrollbar` |
+
+---
+
+### 🎬 재난 영상 모드 ⭐ 4th 신규
+
+| 기능 | 설명 | 함수/코드 |
+|------|------|----------|
+| **카테고리 버튼** | DB에서 로드된 재난 카테고리 | `{% for item in disaster_videos %}` |
+| **영상 오버레이** | YouTube 임베드 전체화면 재생 | `video-overlay`, `video-iframe` |
+| **영상 닫기** | ✕ 버튼으로 영상 모드 종료 | `closeVideoOverlay()` |
+| **자동 재생** | 오버레이 열릴 때 자동 재생 시작 | `autoplay=1` 파라미터 |
 
 ---
 
@@ -536,7 +604,7 @@ GPS 좌표 기반 가장 가까운 대피소 검색
 | **걷는 아이콘** | 🚶 아이콘 좌우 흔들림 | `@keyframes walking` |
 | **봇 말하기** | 아바타 확대/축소 + 살짝 기울임 | `@keyframes bot-talking` |
 | **LLM 배지 펄스** | ON 상태 시 깜빡임 | `animate-pulse` (Tailwind) |
-
+| **손 흔들기** | 랜딩 페이지 👋 아이콘 | `@keyframes wave-animation` |
 
 ---
 
@@ -573,6 +641,7 @@ GPS 좌표 기반 가장 가까운 대피소 검색
 ┌─────────────────────────────────────────────────────────────────┐
 │  Query Rewrite Node                                              │
 │  └─ BM25 최적화: 조사 제거, 핵심 키워드 추출, 동의어 추가         │
+│  └─ 카카오/Vector 용도별 쿼리 분리 (location_type 판단)          │
 └─────────────────────────────────────────────────────────────────┘
       │
       ▼
@@ -591,21 +660,191 @@ GPS 좌표 기반 가장 가까운 대피소 검색
 [structured_data + message 응답]
 ```
 
+### 재난 키워드 매핑
+
+```python
+disaster_keyword_mapping = {
+    # 기상 재난 - 비/물 관련
+    "비", "폭우", "집중호우" → "호우",
+    "홍수", "침수", "범람" → "홍수",
+    "태풍", "강풍", "돌풍" → "태풍",
+    
+    # 지질 재난
+    "지진", "진동", "여진" → "지진",
+    "쓰나미", "해일" → "지진해일",
+    "산사태", "토석류", "낙석" → "산사태",
+    
+    # 화재/폭발
+    "화재", "불", "연기" → "화재",
+    "산불", "산림 화재" → "산불",
+    "폭발", "가스 폭발" → "폭발",
+    "가스", "가스 누출" → "가스",
+    
+    # 기타
+    "화산", "분화" → "화산폭발",
+    "방사능", "핵", "원전" → "방사능",
+    "댐 붕괴" → "댐붕괴"
+}
+```
+
 ---
 
-## 📊 성능 지표
+## 📊 성능 평가 시스템
+
+### 🎯 평가 개요
+
+LLM(GPT-4o)을 평가자로 사용하여 재난 행동요령 응답의 품질을 체계적으로 측정합니다.
 
 ```
-[성능지표 등등등] 
+┌─────────────────────────────────────────────────────────────────┐
+│                    LLM 평가 파이프라인                          │
+├─────────────────────────────────────────────────────────────────┤
+│  테스트 케이스 (20개)                                           │
+│       │                                                         │
+│       ▼                                                         │
+│  LangGraph Agent 실행                                           │
+│       │                                                         │
+│       ▼                                                         │
+│  GPT-4o 평가자                                                  │
+│  ├─ 관련성 (60점): 핵심 행동요령 포함 여부                      │
+│  ├─ 품질 (20점): 구체성 및 실용성                               │
+│  └─ 순수도 (20점): 다른 재난 정보 오염 여부                     │
+│       │                                                         │
+│       ▼                                                         │
+│  구조화된 평가 결과 (JSON)                                      │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### 📈 평가 결과 요약
+
+| 지표 | 점수 | 비고 |
+|------|------|------|
+| **평균 총점** | **75.1 / 100** | 양호 수준 |
+| **관련성 점수** | 42.25 / 60 (70.4%) | 핵심 행동요령 포함률 |
+| **품질 점수** | 15.55 / 20 (77.8%) | 구체적이고 실용적 |
+| **순수도 점수** | 17.30 / 20 (86.5%) | 오염 최소화 |
+
+### 📊 등급별 분포
+
+```
+🏆 우수 (90-100점): ████████████████████████████████████  7개 (35.0%)
+✅ 양호 (70-89점):  ████████████████████████████████████  7개 (35.0%)
+⚠️  보통 (50-69점):  ███████████████                       3개 (15.0%)
+❌ 미흡 (0-49점):   ███████████████                       3개 (15.0%)
+```
+
+### 🔍 테스트 케이스 분류
+
+| 카테고리 | 개수 | 설명 | 평균 점수 |
+|----------|------|------|-----------|
+| **basic** | 8개 | 기본 재난 행동요령 질문 | 79.1점 |
+| **casual** | 4개 | 일상적/긴급 상황 표현 | 78.5점 |
+| **action** | 4개 | 구체적 행동 요청 | 82.3점 |
+| **cause** | 2개 | 재난 원인 설명 요청 | 45.5점 |
+| **location_combined** | 2개 | 위치 + 재난 복합 질문 | 76.5점 |
+
+### ✨ 우수 사례 (90점 이상)
+
+| 질문 | 점수 | 주요 강점 |
+|------|------|----------|
+| "화재 나면?" | 93점 | 구체적 대피 지침, 소화기 사용법 포함 |
+| "지진 발생 시 안전한 자세는?" | 93점 | Drop-Cover-Hold 명확히 설명 |
+| "쓰나미 났을 때" | 91점 | 핵심 대피 요령 + 추가 주의사항 |
+| "불이야!" | 91점 | 긴급 상황에 적절한 즉각 대응 안내 |
+| "산불 대피" | 91점 | 바람 방향 고려, 연기 피하기 등 |
+| "화재에서 대피하려면 어디로 가야 해?" | 91점 | 실용적 대피 경로 안내 |
+| "건물이 흔들리고 있어. 무서워" | 91점 | 감정적 지지 + 정확한 행동 지침 |
+
+### ⚠️ 개선 필요 사례
+
+| 질문 | 점수 | 개선 방향 |
+|------|------|----------|
+| "산사태 대피" | 48점 | 위치 정보 요청 대신 즉각적인 행동요령 제공 필요 |
+| "지진 발생 원인은?" | 43점 | 원인 설명 + 관련 행동요령 함께 제공 |
+| "화산이 터졌다니까?" | 38점 | 정의 설명보다 대피 행동요령 우선 제공 |
+
+### 📝 주요 피드백 반영
+
+1. **가스/전기 차단 언급 보강**: 지진 행동요령에서 누락되는 경우 다수
+2. **"불이야!" 외치기 추가**: 화재 시 주변 알림 행동 강조 필요
+3. **원인 질문 대응 개선**: 원인 설명과 함께 관련 행동요령도 제공
 
 ---
 
-## 📊 성능 측정 결과
+## 📊 API 성능 측정 결과
+
+### ⏱️ 응답 시간 분석
 
 ```
-[API 요청 시작] 
+[API 요청 시작] '강남역 근처인데 지진 났어'
+============================================================
+⏱️ [성능 측정 결과]
+  - 의도분류 시간: 0.312초
+  - 질문재정의 시간: 0.287초
+  - LLM 호출 시간: 0.856초
+  - 도구 실행 시간: 1.234초
+    ├─ 카카오 API 호출: 0.189초
+    └─ ChromaDB 검색: 0.156초
+  - LangGraph 총 시간: 2.689초
+  - API 총 처리 시간: 2.891초
+============================================================
 ```
+
+### 📈 평균 처리 시간
+
+| 단계 | 평균 시간 | 비고 |
+|------|----------|------|
+| **의도 분류** | 0.3초 | GPT-4o-mini |
+| **질문 재정의** | 0.3초 | 카카오/Vector 용도 분리 |
+| **도구 실행** | 1.0~2.0초 | 외부 API + DB 검색 |
+| **LangGraph 총합** | 2.0~5.0초 | 질문 복잡도에 따라 변동 |
+| **API 총 응답** | 2.5~5.5초 | 네트워크 상태 영향 |
+
+### 🔧 최적화 적용 사항
+
+1. **키워드 기반 빠른 의도 분류**: LLM 호출 전 정규식 매칭으로 명확한 케이스 즉시 분류
+2. **structured_data 즉시 종료**: 도구 결과에 구조화 데이터 있으면 추가 LLM 호출 생략
+3. **병렬 처리 고려**: 카카오 API와 ChromaDB 검색 동시 실행 가능
+
+---
+
+## 🗄️ Django 데이터베이스 모델
+
+### Advertisement (광고)
+
+```python
+class Advertisement(models.Model):
+    ad_kind = models.CharField(max_length=100)      # 광고 종류
+    ad_id = models.CharField(max_length=50)         # UUID 기반 자동 생성
+    image_path = models.CharField(max_length=500)   # 이미지 경로
+    title = models.CharField(max_length=200)        # 광고 제목
+    is_active = models.BooleanField(default=True)   # 활성화 여부
+    display_order = models.IntegerField(default=0)  # 표시 순서
+```
+
+### DisasterVideo (재난 영상)
+
+```python
+class DisasterVideo(models.Model):
+    DISASTER_KIND_CHOICES = [
+        ('지진', '지진'), ('홍수', '홍수'), ('산사태', '산사태'),
+        ('호우', '호우'), ('해일', '해일'), ('태풍', '태풍'),
+        ('화산재', '화산재'), ('화산폭발', '화산폭발'), ('댐붕괴', '댐붕괴'),
+        ('화재', '화재'), ('폭발', '폭발'), ('원전사고', '원전사고'),
+        ('산불', '산불'),
+    ]
+    
+    disaster_kind = models.CharField(choices=DISASTER_KIND_CHOICES)
+    youtube_link = models.URLField()                # YouTube 임베드 링크
+    icon_path = models.CharField(max_length=500)    # 카테고리 아이콘 경로
+    is_active = models.BooleanField(default=True)   # 활성화 여부
+```
+
+### Django Admin 기능
+
+- **광고 관리**: 이미지 미리보기, 활성화/비활성화, 표시 순서 조정
+- **재난 영상 관리**: 카테고리별 필터링, 일괄 활성화/비활성화
+- **CSV 일괄 임포트**: `python manage.py import_csv` 커맨드
 
 ---
 
@@ -615,8 +854,9 @@ GPS 좌표 기반 가장 가까운 대피소 검색
 - [ ] 실시간 재난 알림 Push 연동
 - [ ] 카테고리별 대피소 필터링 (장애인, 유아, 반려동물)
 - [ ] 다국어 지원 (영어, 중국어, 일본어)
-- [ ] RAG 평가 지표 적용 (RAGAS)
+- [x] ~~RAG 평가 지표 적용~~ (LLM 평가자 기반 구현 완료)
 - [ ] 음성 입력/출력 지원
+- [ ] 평가 점수 80점 이상 달성 (현재 75.1점)
 
 ---
 
